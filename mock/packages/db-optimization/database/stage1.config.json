@@ -1,0 +1,19 @@
+{
+  "container_id": "database",
+  "accepts_submission": false,
+  "network": {
+    "enabled": false,
+    "internal_only": false
+  },
+  "resource_limits": {
+    "cpu": "2.0",
+    "memory": "2G",
+    "timeout": 120
+  },
+  "environment": {
+    "POSTGRES_DB": "hackathon_db",
+    "POSTGRES_USER": "judge",
+    "POSTGRES_PASSWORD": "judgepass",
+    "PGDATA": "/var/lib/postgresql/data/pgdata"
+  }
+}

@@ -1,0 +1,139 @@
+Tối ưu truy vấn CSDL
+Mô tả
+Các hệ thống phân tích và OLTP lớn thường gặp phải tình trạng truy vấn trở nên chậm đến mức không thể sử dụng khi dữ liệu mở rộng (ví dụ: hơn 100 triệu hàng). Trong quá trình vận hành, điều này gây ra sự chậm trễ trong bảng điều khiển, quy trình ETL và các tính năng của khách hàng. Nhiệm vụ của bạn là làm cho một khối lượng công việc SQL chậm nhất định chạy ở tốc độ chấp nhận được trên một máy duy nhất bằng cách áp dụng các thay đổi về lược đồ/chỉ mục/truy vấn thực dụng và kỹ thuật nhẹ (không phân mảnh đàn hồi trên nhiều máy).
+Domain: Databases, query optimization, systems engineering, data engineering.
+Specs
+Format nộp bài
+Thí sinh nộp một file zip (hoặc một Docker image) chứa các file sau:
+migration.sql — DDL/DML tạo bảng/index/view cần thiết.
+Q<N>.sql — các query được viết lại và các lệnh SQL phụ trợ (hàm, view).
+Optional: explanation.txt/README.md mô tả các thay đổi và lí do (tối đa 500 từ).
+Lưu ý quan trọng: Bài nộp KHÔNG ĐƯỢC PHÉP chứa bảng kết quả tính sẵn tương ứng với query thử (v.d.., không được nộp data dump của kết quả). Thí sinh có thể tạo và sử dụng index, materialized view, summary table, aggregate — trong quá trình chấm bài, một database mới tinh sẽ được tạo và chạy migration của thí sinh.
+Functional Requirements (MUSTs)
+Phải đưa ra kết quả đúng theo thứ tự cho các benchmark query (so khớp với kết quả baseline).
+Phải viết lại SQL và thay đổi schema (indexes, partitioning, materialized views, summary tables, v,v.) trong Q<N>.sql.
+Phải chạy được trong máy chấm: psql -f migration.sql (hoặc docker run) dùng để tạo các bảng, sau đó Q<N>.sql và các script dùng để query.
+Không được sử dụng vượt quá tài nguyên khi chấm: memory & time.
+Non-Functional
+Hiệu năng: Giảm độ trễ của bộ query benchmark tới mục tiêu (xem trong mục Đánh giá)
+Ổn định: Các script phải xử lí được trường hợp các bảng bị trống hoặc chưa lấp đầy hoàn toàn
+Hiệu quả tài nguyên: Đảm bảo tài nguyên tiêu hao thêm (vd: storage) ở mức hợp lí
+Tái lập: README phải chứa chính xác các lệnh cần cho migration và test.
+Constraints
+DB: PostgreSQL 14 (phiên bản được dùng khi chấm).
+Dataset size: bảng events ~100 triệu bản ghi(xem schema bên dưới), cộng thêm các bảng khác có thể lên tới ~120 triệu bản ghi. Dataset đầy đủ sẽ được dùng trong môi trường chấm.
+Phần cứng chấm: VM với 8 vCPU, 32 GB RAM, 1 TB disk (local SSD). (Thí sinh phải thiết kế dựa trên cấu hình hệ thống này)
+Giới hạn thời gian:
+Migration ( migration.sql): tối đa 30 phút (để build indexes/materialized views).
+Mỗi query chấm điểm: 4s là mục tiêu; 10s timeout (fail).
+Tiêu thụ storage: Mục tiêu là ≤ 30% kích thước storage sử dụng thêm so với DB
+Kĩ thuật được sử dụng: indexes, partial indexes, composite indexes, partitioning, clustering, materialized views, summary tables/upserts, query rewriting, PL/pgSQL functions, sử dụng EXPLAIN khi dev.
+Kĩ thuật bị cấm: nộp kết quả tính sẵn cho query chấm điểm, dùng remote DB, xử lí phân tán trong nhiều máy, hoặc cố tình thay đổi bộ kit chấm điểm. Mọi bài nộp có dấu hiệu vi phạm đều bị hủy.
+Input format
+-- events: main table 100 triệu+ bản ghi
+CREATE TABLE events (
+event_id BIGSERIAL PRIMARY KEY,
+user_id BIGINT NOT NULL,
+device_id BIGINT,
+event_type VARCHAR(50),
+event_ts TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+payload JSONB
+);
+-- users: 10 triệu bản ghi
+CREATE TABLE users (
+user_id BIGINT PRIMARY KEY,
+signup_ts TIMESTAMP,
+country CHAR(2),
+plan VARCHAR(20)
+);
+-- devices: 5 triệu bản ghi
+CREATE TABLE devices (
+device_id BIGINT PRIMARY KEY,
+device_type VARCHAR(30),
+os_version VARCHAR(20)
+);
+-- baseline index: không có sẵn ban đầu
+Dataset đầy đủ sẽ theo cấu trúc trên. Thí sinh sẽ được cung cấp một dataset mẫu (10k bản ghi) và một script tạo data.
+Output Format
+Với mỗi query chấm điểm, bài nộp phải trả ra các bản ghi theo đúng thứ tự như query nguyên bản. Các query sẽ được chạy và output được so khớp 1-1 với kết quả dự tính.
+Bài nộp phải bao gồm run_tests.sh xuất ra một báo cáo đơn giản:
+QUERY q1: OK, time_ms=123
+QUERY q2: OK, time_ms=45
+Tài nguyên cung cấp cho thí sinh
+Một dataset mẫu (10k bản ghi) + script tạo data
+Baseline Q<N>.sql chứa các truy vấn chậm cần tối ưu và output dự tính cho dataset mẫu.
+Bộ kit chấm điểm sẽ:
+Nạp dataset đầy đủ vào Postgre,
+Chạy psql -f migration.sql,
+Chạy Q<N>.sql và ghi lại timing và tính đúng sai của output
+
+Chấm điểm
+Cơ chế
+Pha Public (dev): thí sinh nhận sample_db (10k bản ghi) + queries.sql (3 query). Thí sinh có thể chạy thử local. Timings mẫu được gửi kèm dataset.
+Pha Chấm điểm: giám khảo nạp dataset đầy đủ (100M+ bản ghi) vào máy chấm, chạy psql -f migration.sql (timeout 30 phút), sau đó chạy run_tests.sh. Giám khảo sẽ sử dụng:
+3 query chấm điểm (q1, q2, q3). Mỗi query được chạy 3 lần (warm-up + 2 lượt tính điểm). Kết quả cuối cùng sẽ là trung bình hai lượt chạy.
+Test concurrency: Chạy đồng q1 thời 10 client trong 30s và đo throughput& độ trễ
+Điều kiện fail: Kết quả trả về sai (bao gồm trường hợp bản ghi sai thứ tự) → điểm “Chính xác” của query = 0. Nếu query timeout (>10s) → coi như query fail và không có điểm.
+Bộ query chấm điểm
+q1: Count of events per event_type for active users in last 30 days:
+SELECT e.event_type, count(_) as cnt
+FROM events e
+JOIN users u ON u.user_id = e.user_id
+WHERE e.event_ts >= now() - interval '30 days'
+AND u.plan = 'pro'
+GROUP BY e.event_type
+ORDER BY cnt DESC;
+q2: Recent distinct device types used by users from country 'VN' with a specific payload flag:
+SELECT distinct d.device_type
+FROM events e
+JOIN devices d ON d.device_id = e.device_id
+JOIN users u ON u.user_id = e.user_id
+WHERE u.country = 'VN'
+AND (e.payload->>'flag') = 'true'
+AND e.event_ts BETWEEN now() - interval '7 days' AND now();
+q3: Top 100 users by number of purchases (event_type='purchase') in last 90 days, along with signup date:
+SELECT e.user_id, u.signup_ts, count(_) AS purchases
+FROM events e
+JOIN users u ON u.user_id = e.user_id
+WHERE e.event_type = 'purchase'
+AND e.event_ts >= now() - interval '90 days'
+GROUP BY e.user_id, u.signup_ts
+ORDER BY purchases DESC
+LIMIT 100;
+(Chấm điểm thực tế sẽ sử dụng một bộ query đã được tùy biến / tham số hóa)
+Tiêu chí & công thức tính điểm
+50% — Chính xác: Với mỗi query, 100 điểm sẽ được cho nếu kết quả trả về đầy đủ và đúng thứ tự; nếu kết quả đúng một phần sẽ được tính điểm tương ứng (chỉ áp dụng các query không yêu cầu thứ tự kết quả)
+30% — Độ trễ: Cho mỗi query, điểm sẽ được tính theo score_q = clamp( (target_ms / median_time_ms), 0, 1 ) với target_ms = 4000 ms (4s). Nếu query timeout (>10s) , score_q = 0.
+10% — Chịu tải: Throughput (successful queries/sec) trong bài test 10-client sẽ được đo. Baseline throughput Btarget = 10 query thành công/s, score_t = clamp(đo được/Btarget, 0, 1)
+10% — Hiệu quả tài nguyên: Storage sử dụng thêm khi chạy migration sẽ được đo. Thí sinh sử dụng ít storage sẽ được thêm điểm. score_s = clamp(1 - (extra_storage / 0.3\*base_data_size), 0,1) (sử dụng ≤30% storage so với dataset được 100 điểm; >30% điểm giảm dần.) score_s = 0 nếu sử dụng thêm storage tương đương kích thước dataset (100%)
+Điểm cuối cùng là tổng của các điểm query đã thông qua tính toán trọng số.
+Quy tắc tie-break
+Điểm chính xác cao hơn
+median_time thấp hơn
+Sử dụng storage ít hơn
+Migration nhanh hơn.
+Đặc biệt, nếu migration lỗi (syntax error / crashes), bài nộp nhận 0 điểm
+
+Phụ lục
+Luồng chấm ví dụ
+Load DB dump / generate data:
+pg_restore -d hackathon_db full_dataset.dump
+
+# or run dataset generator that inserts 100M rows
+
+Apply migration:
+psql -d hackathon_db -f migration.sql
+
+# timeout 30m
+
+Run tests:
+./run_tests.sh # or psql -f optimize.sql (should produce timing and outputs)
+The judge compares outputs to canonical results and computes timings.
+Gợi ý cho thí sinh
+Add indexes on (event_type, event_ts), partial indexes for active partitions, composite indexes for join keys.
+Use partitioning (range partition by event_ts) to limit scanned data for recent time windows.
+Use materialized views or summary tables updated in migration (not via external cron) to pre-aggregate heavy joins.
+Use CLUSTER or VACUUM ANALYZE as part of migration to improve plan quality.
+Consider partial indexes (e.g., only for event_type='purchase' or payload->>'flag' = 'true') to reduce index size.
+Rewriting queries to avoid SELECT DISTINCT over huge joins, or push filters earlier.
+Use EXPLAIN (ANALYZE, BUFFERS) locally to reason about plans.

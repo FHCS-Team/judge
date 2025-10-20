@@ -1,0 +1,20 @@
+{
+  "container_id": "submission",
+  "accepts_submission": false,
+  "network": {
+    "enabled": false,
+    "internal_only": false
+  },
+  "resource_limits": {
+    "cpu": "1.0",
+    "memory": "1G",
+    "timeout": 120
+  },
+  "environment": {
+    "PGHOST": "database",
+    "PGPORT": "5432",
+    "PGDATABASE": "hackathon_db",
+    "PGUSER": "judge",
+    "PGPASSWORD": "judgepass"
+  }
+}

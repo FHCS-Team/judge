@@ -1,0 +1,63 @@
+{
+  "problem_id": "sql-optimization",
+  "problem_name": "Database Query Optimization Challenge",
+  "description": "Optimize slow SQL queries on a 1M+ row dataset using schema changes, indexes, and query rewriting",
+  "project_type": "database",
+  "time_limit": 1800,
+  "containers": [
+    {
+      "container_id": "database",
+      "name": "PostgreSQL Database Server",
+      "accepts_submission": false,
+      "dockerfile_path": "database/Dockerfile",
+      "depends_on": [],
+      "terminate_on_finish": []
+    },
+    {
+      "container_id": "submission",
+      "name": "Query Evaluation Container",
+      "accepts_submission": true,
+      "dockerfile_path": "submission/Dockerfile",
+      "depends_on": [
+        {
+          "container_id": "database",
+          "condition": "healthy",
+          "timeout": 60,
+          "retry": 10,
+          "retry_interval": 3
+        }
+      ],
+      "terminate_on_finish": ["database"]
+    }
+  ],
+  "rubrics": [
+    {
+      "rubric_id": "correctness",
+      "name": "Query Result Correctness",
+      "type": "test_cases",
+      "max_score": 50,
+      "container": "submission"
+    },
+    {
+      "rubric_id": "query_latency",
+      "name": "Query Latency Performance",
+      "type": "performance_benchmark",
+      "max_score": 30,
+      "container": "submission"
+    },
+    {
+      "rubric_id": "concurrency",
+      "name": "Concurrent Load Performance",
+      "type": "performance_benchmark",
+      "max_score": 10,
+      "container": "submission"
+    },
+    {
+      "rubric_id": "resource_efficiency",
+      "name": "Storage Efficiency",
+      "type": "resource_usage",
+      "max_score": 10,
+      "container": "submission"
+    }
+  ]
+}

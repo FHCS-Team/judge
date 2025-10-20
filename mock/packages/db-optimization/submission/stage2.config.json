@@ -1,0 +1,23 @@
+{
+  "container_id": "submission",
+  "accepts_submission": true,
+  "submission_mount": "/submission",
+  "network": {
+    "enabled": true,
+    "internal_only": true,
+    "network_name": "sql-optimization-{{submission_id}}",
+    "allowed_containers": ["database"]
+  },
+  "resource_limits": {
+    "cpu": "1.0",
+    "memory": "1G",
+    "timeout": 600
+  },
+  "environment": {
+    "PGHOST": "database",
+    "PGPORT": "5432",
+    "PGDATABASE": "hackathon_db",
+    "PGUSER": "judge",
+    "PGPASSWORD": "judgepass"
+  }
+}

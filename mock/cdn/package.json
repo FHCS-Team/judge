@@ -1,0 +1,13 @@
+{
+  "name": "mock-cdn",
+  "version": "1.0.0",
+  "description": "Mock CDN server for testing file downloads and uploads",
+  "main": "server.js",
+  "scripts": {
+    "start": "serve fs/ -p 3001 --cors",
+    "dev": "serve fs/ -p 3001 --cors --verbose"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}

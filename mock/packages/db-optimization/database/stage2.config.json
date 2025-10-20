@@ -1,0 +1,28 @@
+{
+  "container_id": "database",
+  "accepts_submission": false,
+  "network": {
+    "enabled": true,
+    "internal_only": true,
+    "network_name": "sql-optimization-{{submission_id}}",
+    "allowed_containers": ["submission"]
+  },
+  "resource_limits": {
+    "cpu": "2.0",
+    "memory": "2G",
+    "timeout": 1200
+  },
+  "environment": {
+    "POSTGRES_DB": "hackathon_db",
+    "POSTGRES_USER": "judge",
+    "POSTGRES_PASSWORD": "judgepass",
+    "PGDATA": "/var/lib/postgresql/data/pgdata"
+  },
+  "health_check": {
+    "command": "pg_isready -U judge -d hackathon_db",
+    "interval": 3,
+    "timeout": 2,
+    "retries": 10,
+    "start_period": 10
+  }
+}
