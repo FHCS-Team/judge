@@ -2,7 +2,7 @@
 
 ## 1. Submit problem package
 
-> Currently we are planning to accepts problem packages via AMQP messages only.
+> Currently we are planning to accept problem packages via AMQP messages only.
 
 ## 2. Validate package
 
