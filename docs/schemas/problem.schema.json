@@ -1,0 +1,324 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/",
+  "title": "Problem Configuration Schema",
+  "description": "Configuration schema for judge problems supporting multi-container environments with build/evaluation stage separation",
+  "type": "object",
+  "required": ["problem_id", "containers"],
+  "additionalProperties": true,
+  "properties": {
+    "problem_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,63}$",
+      "description": "Unique identifier for the problem (lowercase, alphanumeric with hyphens)"
+    },
+    "problem_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable problem name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "default": "1.0.0",
+      "description": "Semantic version of the problem"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief problem description"
+    },
+    "project_type": {
+      "type": "string",
+      "enum": ["algorithm", "web_api", "full_stack_web", "database_design", "cli_tool", "data_processing"],
+      "description": "Type of project (see https://github.com/FHCS-Team/judge/ for details)"
+    },
+    "containers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "Container definitions for the problem",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+            "description": "Unique identifier for the container, used by containers of the same submission"
+          },
+          "build_stage": {
+            "type": "object",
+            "description": "Build stage configuration for this container",
+            "additionalProperties": false,
+            "properties": {
+              "dockerfile": {
+                "type": "string",
+                "default": "containers/{container_id}/Dockerfile.build",
+                "description": "Path to build Dockerfile relative to problem root"
+              },
+              "context": {
+                "type": "string",
+                "default": "containers/{container_id}/build",
+                "description": "Build context directory relative to problem root"
+              },
+              "environment": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Environment variables for the container"
+              },
+              "resource_limits": {
+                "$ref": "#/definitions/resource_limits",
+                "description": "Resource limits for build stage"
+              },
+              "network_mode": {
+                "type": "string",
+                "enum": ["bridge", "host", "none", "isolated"],
+                "default": "bridge",
+                "description": "Network mode for build stage. 'bridge' allows internet access, 'none' disables networking, 'host' uses host network, 'isolated' allows communication only with other containers within the same containers group."
+              }
+            }
+          },
+          "eval_stage": {
+            "type": "object",
+            "description": "Evaluation stage configuration for this container",
+            "additionalProperties": false,
+            "properties": {
+              "dockerfile": {
+                "type": "string",
+                "default": "containers/{container_id}/Dockerfile.eval",
+                "description": "Path to evaluation Dockerfile (optional if using build image)"
+              },
+              "context": {
+                "type": "string",
+                "default": "containers/{container_id}/build",
+                "description": "Build context directory relative to problem root"
+              },
+              "resource_limits": {
+                "$ref": "#/definitions/resource_limits",
+                "description": "Resource limits for evaluation stage"
+              },
+              "environment": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Environment variables for the container"
+              },
+              "network_mode": {
+                "type": "string",
+                "enum": ["isolated", "bridge", "none", "host"],
+                "default": "isolated",
+                "description": "Network mode for evaluation"
+              }
+            }
+          },
+          "accepts_submission": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this container accepts team submissions"
+          },
+          "submission_package_id": {
+            "type": "string",
+            "description": "ID of submission package to mount in this container"
+          },
+          "mount_submission_at": {
+            "type": "string",
+            "default": "/workspace",
+            "description": "Path where submissions will be mounted"
+          },
+          "port": {
+            "type": "integer",
+            "description": "Ports to expose from the container"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Container IDs this container depends on"
+          },
+          "health_check": {
+            "type": "object",
+            "description": "Health check configuration",
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ],
+                "description": "Health check command"
+              },
+              "interval": {
+                "type": "integer",
+                "description": "Health check interval in seconds"
+              },
+              "timeout": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 60,
+                "description": "Health check timeout in seconds"
+              },
+              "retries": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 3,
+                "description": "Number of health check retries"
+              },
+              "start_period": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0,
+                "description": "Grace period before health checks start"
+              }
+            }
+          }
+        }
+      }
+    },
+    "submission_packages": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Submission package definitions",
+      "items": {
+        "type": "object",
+        "required": ["package_id"],
+        "additionalProperties": false,
+        "properties": {
+          "package_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+            "description": "Unique identifier for the submission package"
+          },
+          "package_name": {
+            "type": "string",
+            "description": "Human-readable package name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what should be submitted in this package"
+          }
+        }
+      }
+    },
+    "rubrics": {
+      "type": "array",
+      "description": "Evaluation rubric definitions",
+      "items": {
+        "type": "object",
+        "required": ["rubric_id", "rubric_type", "max_score", "container_id"],
+        "additionalProperties": false,
+        "properties": {
+          "rubric_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+            "description": "Unique identifier for the rubric"
+          },
+          "rubric_name": {
+            "type": "string",
+            "description": "Human-readable rubric name"
+          },
+          "rubric_type": {
+            "type": "string",
+            "enum": ["test_cases", "performance_benchmark", "code_quality", "security_scan", "api_endpoints", "database_integrity", "ui_tests", "custom"],
+            "description": "Type of rubric evaluation"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what this rubric evaluates"
+          },
+          "max_score": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Maximum possible score for this rubric"
+          },
+          "output_file": {
+            "type": "string",
+            "default": "rubric_{rubric_id}.json",
+            "description": "Filename for rubric output in /out directory"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout for rubric evaluation in seconds"
+          }
+        }
+      }
+    },
+    "hooks_config": {
+      "type": "object",
+      "description": "Configuration for hook execution",
+      "additionalProperties": false,
+      "properties": {
+        "timeout_seconds": {
+          "type": "integer",
+          "default": 30,
+          "description": "Default timeout for individual hooks"
+        },
+        "parallel_execution": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to allow other hooks to run in parallel instead of having to wait for this hook to finish"
+        },
+        "retries": {
+          "type": "integer",
+          "default": 3,
+          "description": "Number of times to retry a failed hook"
+        },
+        "retry_delay_seconds": {
+          "type": "integer",
+          "default": 15,
+          "description": "Delay between hook retries in seconds"
+        },
+        "continue_on_error": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to continue evaluation when hooks fail after all retries"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "resource_limits": {
+      "type": "object",
+      "description": "Resource limit configuration",
+      "additionalProperties": false,
+      "properties": {
+        "memory": {
+          "type": "string",
+          "pattern": "^\\d+[kmgt]?b?$",
+          "description": "Memory limit (e.g., '512m', '2g')"
+        },
+        "cpus": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 32.0,
+          "description": "CPU limit in cores (e.g., 1.0, 2.5)"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Execution timeout in seconds"
+        },
+        "disk_space": {
+          "type": "string",
+          "pattern": "^\\d+[kmgt]?b?$",
+          "description": "Disk space limit (e.g., '1g', '500m')"
+        },
+        "network_bandwidth": {
+          "type": "string",
+          "pattern": "^\\d+[kmg]?bps$",
+          "description": "Network bandwidth limit (e.g., '10mbps')"
+        }
+      }
+    }
+  }
+}

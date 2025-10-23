@@ -1,0 +1,65 @@
+{
+  "event_id": "evt_0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+  "event_type": "result.evaluation.completed",
+  "event_version": "1.0",
+  "event_time": "2025-10-23T11:00:00.000Z",
+  "source": "judge.evaluator",
+  "correlation_id": "corr_abcdef123456",
+  "amqp_properties": {
+    "contentType": "application/json",
+    "contentEncoding": "utf-8",
+    "persistent": true,
+    "messageId": "evt_0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+    "timestamp": 1769281200,
+    "correlationId": "corr_abcdef123456",
+    "type": "result.evaluation.completed",
+    "appId": "judge.evaluator",
+    "headers": {
+      "event_version": "1.0",
+      "payload_schema": "https://github.com/FHCS-Team/judge/schemas/result_event.schema.json"
+    }
+  },
+  "payload": {
+    "submission_id": "sub_1234567890abcdef",
+    "problem_id": "rest-api-users",
+    "status": "completed",
+    "evaluated_at": "2025-10-23T10:40:15.678Z",
+    "execution_status": "success",
+    "timed_out": false,
+    "total_score": 87.5,
+    "max_score": 100,
+    "percentage": 87.5,
+    "rubrics": [
+      {
+        "rubric_id": "api_correctness",
+        "score": 38.0,
+        "max_score": 40.0,
+        "details": {
+          "$comment": "Details about the rubric evaluation, different structure per rubric type",
+          "total": 25,
+          "passed": 23,
+          "failed": 2
+        }
+      }
+    ],
+    "metadata": {
+      "execution_time_seconds": 315.6,
+      "memory_peak_mb": 856,
+      "cpu_average_percent": 45.3
+    },
+    "artifacts": [
+      {
+        "filename": "test-report.html",
+        "size": 250880,
+        "modified": "2025-10-13T10:40:15.678Z",
+        "url": "/api/results/sub_1234567890abcdef/artifacts/test-report.html"
+      },
+      {
+        "filename": "logs.txt",
+        "size": 10240,
+        "modified": "2025-10-13T10:40:15.678Z",
+        "url": "/api/results/sub_1234567890abcdef/artifacts/logs.txt"
+      }
+    ]
+  }
+}
