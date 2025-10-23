@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/result_event.schema.json",
+  "title": "Result Event Schema",
+  "description": "Envelope schema for result events published to a message queue (notifications about submission evaluation).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "description": "Unique event identifier (UUID recommended)" },
+    "event_type": { "type": "string", "description": "Type of event (e.g., result.evaluation.completed, result.evaluation.started, result.evaluation.failed)" },
+    "event_version": { "type": "string", "description": "Schema version for the event payload", "default": "1.0" },
+    "event_time": { "type": "string", "format": "date-time", "description": "ISO 8601 timestamp when the event was emitted" },
+    "source": { "type": "string", "description": "Service or component that emitted the event" },
+    "correlation_id": { "type": ["string", "null"], "description": "Optional correlation ID for tracing across systems" },
+    "amqp_properties": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional recommended AMQP message properties and headers to set when publishing this event",
+      "properties": {
+        "contentType": { "type": "string", "default": "application/json" },
+        "contentEncoding": { "type": "string", "default": "utf-8" },
+        "persistent": { "type": "boolean", "description": "Whether message should be persisted (delivery_mode=2)" },
+        "messageId": { "type": "string" },
+        "timestamp": { "type": "integer", "description": "Epoch seconds for AMQP timestamp property" },
+        "correlationId": { "type": "string" },
+        "type": { "type": "string", "description": "AMQP 'type' property (can mirror event_type)" },
+        "appId": { "type": "string", "description": "AMQP 'app_id' property (publisher/service id)" },
+        "headers": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "submission_id": { "type": "string" },
+        "problem_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["completed", "failed", "running", "queued"] },
+        "evaluated_at": { "type": ["string", "null"], "format": "date-time" },
+        "execution_status": { "type": ["string", "null"] },
+        "timed_out": { "type": ["boolean", "null"] },
+        "total_score": { "type": ["number", "null"] },
+        "max_score": { "type": ["number", "null"] },
+        "percentage": { "type": ["number", "null"] },
+        "rubrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "rubric_id": { "type": "string" },
+              "score": { "type": "number" },
+              "max_score": { "type": "number" },
+              "details": { "type": ["object", "array", "null"], "description": "Rubric-specific details; structure varies by rubric type" }
+            },
+            "required": ["rubric_id", "score", "max_score"]
+          }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "execution_time_seconds": { "type": "number" },
+            "memory_peak_mb": { "type": "number" },
+            "cpu_average_percent": { "type": "number" }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "filename": { "type": "string" },
+              "size": { "type": "integer" },
+              "modified": { "type": "string", "format": "date-time" },
+              "url": { "type": "string" }
+            },
+            "required": ["filename", "url"]
+          }
+        }
+      },
+      "required": ["submission_id", "problem_id", "status"]
+    }
+  },
+  "required": ["event_id", "event_type", "event_time", "source", "payload"],
+  "examples": [
+    {
+      "event_id": "evt_0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+      "event_type": "result.evaluation.completed",
+      "event_version": "1.0",
+      "event_time": "2025-10-23T11:00:00.000Z",
+      "source": "judge.evaluator",
+      "correlation_id": "corr_abcdef123456",
+      "amqp_properties": {
+        "contentType": "application/json",
+        "contentEncoding": "utf-8",
+        "persistent": true,
+        "messageId": "evt_0a1b2c3d-4e5f-6789-abcd-ef0123456789",
+        "timestamp": 1769281200,
+        "correlationId": "corr_abcdef123456",
+        "type": "result.evaluation.completed",
+        "appId": "judge.evaluator",
+        "headers": {
+          "event_version": "1.0",
+          "payload_schema": "https://github.com/FHCS-Team/judge/schemas/result_event.schema.json"
+        }
+      },
+      "payload": {
+        "submission_id": "sub_1234567890abcdef",
+        "problem_id": "rest-api-users",
+        "status": "completed",
+        "evaluated_at": "2025-10-23T10:40:15.678Z",
+        "execution_status": "success",
+        "timed_out": false,
+        "total_score": 87.5,
+        "max_score": 100,
+        "percentage": 87.5,
+        "rubrics": [
+          {
+            "rubric_id": "api_correctness",
+            "score": 38.0,
+            "max_score": 40.0,
+            "details": {
+              "$comment": "Details about the rubric evaluation, different structure per rubric type",
+              "total": 25,
+              "passed": 23,
+              "failed": 2
+            }
+          }
+        ],
+        "metadata": {
+          "execution_time_seconds": 315.6,
+          "memory_peak_mb": 856,
+          "cpu_average_percent": 45.3
+        },
+        "artifacts": [
+          {
+            "filename": "test-report.html",
+            "size": 250880,
+            "modified": "2025-10-13T10:40:15.678Z",
+            "url": "/api/results/sub_1234567890abcdef/artifacts/test-report.html"
+          },
+          {
+            "filename": "logs.txt",
+            "size": 10240,
+            "modified": "2025-10-13T10:40:15.678Z",
+            "url": "/api/results/sub_1234567890abcdef/artifacts/logs.txt"
+          }
+        ]
+      }
+    }
+  ]
+}

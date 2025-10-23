@@ -1,0 +1,182 @@
+{
+  "problem_id": "centralized-logging",
+  "problem_name": "Centralized Logging Service",
+  "version": "1.0.0",
+  "description": "Teams must provide a logging collector service that accepts structured logs from four microservices, stores them, and exposes a query API for evaluators.",
+  "project_type": "full_stack_web",
+  "submission_packages": [
+    {
+      "package_id": "logging_service",
+      "package_name": "Logging Service Implementation",
+      "description": "Teams submit their logging collector service (containerized). The submission will be mounted into the collector container for evaluation."
+    }
+  ],
+  "containers": [
+    {
+      "container_id": "log_collector",
+      "build_stage": {
+        "dockerfile": "containers/log_collector/Dockerfile.build",
+        "context": "containers/log_collector/build",
+        "network_mode": "bridge"
+      },
+      "eval_stage": {
+        "dockerfile": "containers/log_collector/Dockerfile.eval",
+        "context": "containers/log_collector/build",
+        "network_mode": "isolated",
+        "resource_limits": {
+          "memory": "512m",
+          "cpus": 1.0,
+          "timeout": 120
+        }
+      },
+      "accepts_submission": true,
+      "submission_package_id": "logging_service",
+      "mount_submission_at": "/workspace/collector",
+      "port": 8080,
+      "health_check": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
+        "interval": 5,
+        "timeout": 5,
+        "retries": 5,
+        "start_period": 10
+      }
+    },
+    {
+      "container_id": "service_a",
+      "build_stage": {
+        "dockerfile": "containers/service_a/Dockerfile.build",
+        "context": "containers/service_a/build",
+        "network_mode": "bridge"
+      },
+      "eval_stage": {
+        "dockerfile": "containers/service_a/Dockerfile.eval",
+        "context": "containers/service_a/build",
+        "network_mode": "isolated",
+        "resource_limits": { "memory": "128m", "cpus": 0.25, "timeout": 30 }
+      },
+      "accepts_submission": false,
+      "depends_on": ["log_collector"],
+      "health_check": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8001/ready || exit 1"],
+        "interval": 5,
+        "timeout": 3,
+        "retries": 3,
+        "start_period": 2
+      }
+    },
+    {
+      "container_id": "service_b",
+      "build_stage": {
+        "dockerfile": "containers/service_b/Dockerfile.build",
+        "context": "containers/service_b/build",
+        "network_mode": "bridge"
+      },
+      "eval_stage": {
+        "dockerfile": "containers/service_b/Dockerfile.eval",
+        "context": "containers/service_b/build",
+        "network_mode": "isolated",
+        "resource_limits": { "memory": "128m", "cpus": 0.25, "timeout": 30 }
+      },
+      "accepts_submission": false,
+      "depends_on": ["log_collector"],
+      "health_check": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8002/ready || exit 1"],
+        "interval": 5,
+        "timeout": 3,
+        "retries": 3,
+        "start_period": 2
+      }
+    },
+    {
+      "container_id": "service_c",
+      "build_stage": {
+        "dockerfile": "containers/service_c/Dockerfile.build",
+        "context": "containers/service_c/build",
+        "network_mode": "bridge"
+      },
+      "eval_stage": {
+        "dockerfile": "containers/service_c/Dockerfile.eval",
+        "context": "containers/service_c/build",
+        "network_mode": "isolated",
+        "resource_limits": { "memory": "128m", "cpus": 0.25, "timeout": 30 }
+      },
+      "accepts_submission": false,
+      "depends_on": ["log_collector"],
+      "health_check": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8003/ready || exit 1"],
+        "interval": 5,
+        "timeout": 3,
+        "retries": 3,
+        "start_period": 2
+      }
+    },
+    {
+      "container_id": "service_d",
+      "build_stage": {
+        "dockerfile": "containers/service_d/Dockerfile.build",
+        "context": "containers/service_d/build",
+        "network_mode": "bridge"
+      },
+      "eval_stage": {
+        "dockerfile": "containers/service_d/Dockerfile.eval",
+        "context": "containers/service_d/build",
+        "network_mode": "isolated",
+        "resource_limits": { "memory": "128m", "cpus": 0.25, "timeout": 30 }
+      },
+      "accepts_submission": false,
+      "depends_on": ["log_collector"],
+      "health_check": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8004/ready || exit 1"],
+        "interval": 5,
+        "timeout": 3,
+        "retries": 3,
+        "start_period": 2
+      }
+    }
+  ],
+  "rubrics": [
+    {
+      "rubric_id": "connectivity",
+      "rubric_name": "Service Connectivity",
+      "rubric_type": "test_cases",
+      "description": "Checks that the four services can deliver structured logs to the collector API endpoint.",
+      "max_score": 30,
+      "output_file": "rubric_connectivity.json",
+      "timeout": 60
+    },
+    {
+      "rubric_id": "storage",
+      "rubric_name": "Log Storage & Durability",
+      "rubric_type": "test_cases",
+      "description": "Validates that logs are stored and retrievable via the collector's query API with correct schema and ordering.",
+      "max_score": 30,
+      "output_file": "rubric_storage.json",
+      "timeout": 120
+    },
+    {
+      "rubric_id": "api",
+      "rubric_name": "Query API",
+      "rubric_type": "api_endpoints",
+      "description": "Evaluates the collector's query endpoints for correctness, filtering and performance.",
+      "max_score": 30,
+      "output_file": "rubric_api.json",
+      "timeout": 60
+    },
+    {
+      "rubric_id": "quality",
+      "rubric_name": "Code Quality & Security",
+      "rubric_type": "code_quality",
+      "description": "Static checks and basic security scans on the submitted collector codebase.",
+      "max_score": 10,
+      "output_file": "rubric_quality.json",
+      "timeout": 120
+    }
+  ],
+  "hooks_config": {
+    "timeout_seconds": 30,
+    "parallel_execution": false,
+    "retries": 2,
+    "retry_delay_seconds": 10,
+    "continue_on_error": false
+  }
+}
