@@ -20,3 +20,10 @@ const listImages = async () => {
 const pushImage = async (imageName) => {
   // Implementation for pushing a Docker image
 };
+
+module.exports = {
+  pullImage,
+  removeImage,
+  listImages,
+  pushImage,
+};
