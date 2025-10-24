@@ -1,0 +1,36 @@
+{
+  "name": "fhcs-judge",
+  "version": "1.0.0",
+  "description": "An automated judging system designed for hackathons.",
+  "keywords": [
+    "judge",
+    "orchestrator",
+    "fhcs",
+    "hackathon"
+  ],
+  "homepage": "https://github.com/FHCS-Team/judge#readme",
+  "bugs": {
+    "url": "https://github.com/FHCS-Team/judge/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FHCS-Team/judge.git"
+  },
+  "license": "MIT",
+  "author": "FHCS Team",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "eslint": "^9.38.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.4.0",
+    "prettier": "3.6.2"
+  }
+}
