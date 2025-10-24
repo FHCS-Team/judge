@@ -1,0 +1,54 @@
+{
+  "name": "fhcs-judge",
+  "version": "1.0.0",
+  "description": "An automated judging system designed for hackathons.",
+  "keywords": [
+    "judge",
+    "orchestrator",
+    "hackathon"
+  ],
+  "homepage": "https://github.com/FHCS-Team/judge#readme",
+  "bugs": {
+    "url": "https://github.com/FHCS-Team/judge/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FHCS-Team/judge.git"
+  },
+  "license": "MIT",
+  "author": "FHCS Team",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "node --env-file dev.env --watch-path=src src/index.js",
+    "start": "node --env-file prod.env src/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:update": "jest -u",
+    "test:ci": "jest --runInBand --coverage"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.38.0",
+    "eslint": "9.38.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "16.4.0",
+    "jest": "30.2.0",
+    "pino-pretty": "13.1.2",
+    "prettier": "3.6.2"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "amqplib": "0.10.9",
+    "axios": "1.12.2",
+    "better-sqlite3": "12.4.1",
+    "dockerode": "4.0.9",
+    "fs-extra": "11.3.2",
+    "pino": "10.1.0",
+    "prom-client": "15.1.3",
+    "tar": "7.5.1",
+    "uuid": "13.0.0"
+  }
+}
