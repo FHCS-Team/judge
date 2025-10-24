@@ -1,0 +1,12 @@
+# Ignore documentation and example folders
+docs
+examples
+
+# Ignore build and dependency folders
+package-lock.json
+package.json
+
+# Ignore markdown and text files
+*.md
+*.txt
+*.rst
