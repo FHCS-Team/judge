@@ -12,4 +12,4 @@ const upload = async (filePath, uploadUrl) => {};
  */
 const update = async (filePath, newContent) => {};
 
-export { download, upload };
+module.exports = { download, upload };
