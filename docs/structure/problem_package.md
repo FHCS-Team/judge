@@ -14,12 +14,16 @@ Problem packages are archives that contain everything needed to evaluate submiss
 
 ```
 problem-package/
-├── config.json                                 # Problem configuration (required)
-├── containers/                                 # Container definitions (required)
+├── config.json                                 # Problem configuration
+├── containers/                                 # Container definitions
 │   ├── <container_id>/                         # Per-container directory
-│   │   ├── Dockerfile.build                    # Build stage Dockerfile (required)
-│   │   ├── Dockerfile.eval                     # Evaluation stage Dockerfile (optional)
-│   │   ├── hooks/                              # Lifecycle hooks (optional)
+|   |   ├── entrypoint.build.sh                 # Container entrypoint script (optional)
+│   │   ├── entrypoint.eval.sh                  # Container entrypoint script for evaluation stage (required)
+|   |   ├── config.json                         # Container configuration
+│   │   ├── Dockerfile.build                    # Build stage Dockerfile (optional)
+│   │   ├── Dockerfile.eval                     # Evaluation stage Dockerfile (required)
+|   |   ├── submission/                         # Template submission for build stage (optional)
+│   │   ├── hooks/                              # Lifecycle hooks
 │   │   │   ├── pre/
 |   |   |   |   ├── 01_setup.sh                 # Example scripts
 |   |   |   |   └── 02_install.sh
@@ -31,12 +35,16 @@ problem-package/
 |   |   |       └── 01_monitor.sh               # Example periodic script
 │   │   ├── data/                               # Container-specific data (optional)
 │   │   │   └── ...
-│   │   └── ...                                 # Additional container resources (optional)
+│   │   └── ...                                 # Additional container resources
 ├── shared/                                     # Shared resources between containers (optional)
 │   ├── hooks/
 │   └── data/
-└── .judge/                                     # judge metadata (optional)
+└── .judge/                                     # judge metadata
 ```
+
+## Notes
+
+1. `config.json` may reference Dockerfile locations and build contexts relative to the package root
 
 ## Related Documentation
 

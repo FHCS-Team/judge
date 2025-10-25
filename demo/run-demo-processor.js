@@ -6,19 +6,24 @@ async function runDemo() {
   logger.info("starting processor demo run");
 
   // Point at the sample package shipped in mocks/packages
+  // point at package root (contains both 'database' and 'submission' folders)
   const pkg = path.resolve(
     __dirname,
     "..",
     "mocks",
     "packages",
     "db-optimization",
-    "submission",
   );
 
   const job = {
     id: `demo-${Date.now()}`,
     packagePath: pkg,
-    // evalCmd: '/workspace/hooks/post/01_test_queries.sh' // optional override
+    // stageCommands: map of containerId -> { stageNumber: command }
+    stageCommands: {
+      submission: {
+        2: "/package/hooks/post/01_test_queries.sh",
+      },
+    },
   };
 
   try {
