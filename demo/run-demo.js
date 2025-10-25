@@ -14,7 +14,6 @@ async function run() {
   // register result handler using prefix pattern
   registerResultHandler(q);
 
-
   // Start queue without default handler (we rely on registered handlers)
   q.start();
 
@@ -30,6 +29,6 @@ async function run() {
 }
 
 run().catch((e) => {
-  console.error("Demo error", e);
+  logger.error("Demo error", { message: e && e.message, stack: e && e.stack });
   process.exit(1);
 });

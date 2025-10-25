@@ -12,8 +12,14 @@ describe("InMemoryQueue", () => {
       ack();
     });
 
-    q.enqueue({ type: "submission", payload: { submission_id: "s1" } });
-    q.enqueue({ type: "submission", payload: { submission_id: "s2" } });
+    q.enqueue({
+      type: "submission",
+      payload: { submission_id: "s1", problem_id: "p1" },
+    });
+    q.enqueue({
+      type: "submission",
+      payload: { submission_id: "s2", problem_id: "p1" },
+    });
 
     // wait until queue drains
     await q.close(2000);
@@ -37,7 +43,7 @@ describe("InMemoryQueue", () => {
 
     q.enqueue({
       type: "submission",
-      payload: { submission_id: "s-retry" },
+      payload: { submission_id: "s-retry", problem_id: "p-retry" },
       max_retries: 3,
     });
 

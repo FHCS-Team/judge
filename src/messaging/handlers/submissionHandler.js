@@ -47,12 +47,11 @@ function registerSubmissionHandler(queue) {
 
       ack();
     } catch (err) {
-      // also print to stderr for demo debugging
-      console.error(
-        "submission handler caught error:",
-        err && err.stack ? err.stack : err,
-      );
-      logger.error("Submission handler error", { err });
+      // log error with structured logger (include stack when available)
+      logger.error("Submission handler error (caught)", {
+        message: err && err.message,
+        stack: err && err.stack,
+      });
       nack(err);
     }
   });
