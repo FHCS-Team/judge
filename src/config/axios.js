@@ -16,7 +16,10 @@ const logger = require("../utils/logger");
  */
 function createClient(opts = {}) {
   const client = axios.create({
-    baseURL: opts.baseURL || process.env.AXIOS_BASE_URL || "",
+    baseURL:
+      opts.baseURL ||
+      process.env.AXIOS_BASE_URL ||
+      `http://localhost:${process.env.PORT || "3000"}`,
     timeout: typeof opts.timeout === "number" ? opts.timeout : 10000,
     auth: opts.auth,
     headers: opts.headers,
