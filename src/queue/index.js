@@ -119,25 +119,26 @@ class InMemoryQueue {
       ) {
         const ok = problemValidate(envelope.payload);
         if (!ok) {
-          // validate submission payloads when available
-          if (
-            envelope.type &&
-            typeof envelope.type === "string" &&
-            envelope.type.toLowerCase().includes("submission") &&
-            submissionValidate
-          ) {
-            const ok = submissionValidate(envelope.payload);
-            if (!ok) {
-              const err = (submissionValidate.errors || [])
-                .map((e) => `${e.instancePath} ${e.message}`)
-                .join("; ");
-              throw new Error(`submission payload validation failed: ${err}`);
-            }
-          }
           const err = (problemValidate.errors || [])
             .map((e) => `${e.instancePath} ${e.message}`)
             .join("; ");
           throw new Error(`problem payload validation failed: ${err}`);
+        }
+      }
+
+      // validate submission payloads when available
+      if (
+        envelope.type &&
+        typeof envelope.type === "string" &&
+        envelope.type.toLowerCase().includes("submission") &&
+        submissionValidate
+      ) {
+        const ok = submissionValidate(envelope.payload);
+        if (!ok) {
+          const err = (submissionValidate.errors || [])
+            .map((e) => `${e.instancePath} ${e.message}`)
+            .join("; ");
+          throw new Error(`submission payload validation failed: ${err}`);
         }
       }
     } catch (e) {
