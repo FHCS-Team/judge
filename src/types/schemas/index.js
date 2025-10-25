@@ -1,5 +1,12 @@
 /**
- * This module holds all schemas for AJV validation
+ * Central export for AJV schemas used across the app.
  */
+const resultPayload = require("./result_event");
+const problemSchema = require("./problemPackage");
+const submissionSchema = require("./submission");
 
-module.exports = {};
+module.exports = {
+  resultPayload,
+  problemSchema,
+  submission: submissionSchema,
+};
