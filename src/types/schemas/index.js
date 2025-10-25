@@ -10,3 +10,5 @@ module.exports = {
   problemSchema,
   submission: submissionSchema,
 };
+
+module.exports = {};

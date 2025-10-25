@@ -1,4 +1,3 @@
-// Submission message payload schema
 module.exports = {
   type: "object",
   additionalProperties: false,

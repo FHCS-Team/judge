@@ -1,4 +1,3 @@
-// Problem schema extracted from docs/schemas/problem.schema.json
 module.exports = {
   $schema: "http://json-schema.org/draft-07/schema#",
   $id: "https://github.com/FHCS-Team/judge/",

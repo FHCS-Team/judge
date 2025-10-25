@@ -1,4 +1,4 @@
-## Important note for code generation
+ ## Important note for code generation
 
 - Use `utils/logger.js` for logging instead of `console.log`.
 - Generate unit tests for `./src/**/*.js` to `./tests/unit/**/*.test.js` using `jest`
