@@ -174,11 +174,26 @@ module.exports = {
       type: "object",
       additionalProperties: false,
       properties: {
-        memory: { type: "string", pattern: "^\\d+[kmgt]?b?$" },
+        memory: {
+          type: "string",
+          pattern: "^\\d+[KMGTkmgt]?[Bb]?$",
+          description:
+            "Memory limit (e.g., '512m', '2g'). Units may be upper- or lower-case (k, m, g, t).",
+        },
         cpus: { type: "number", minimum: 0.1, maximum: 32.0 },
         timeout: { type: "integer", minimum: 1 },
-        disk_space: { type: "string", pattern: "^\\d+[kmgt]?b?$" },
-        network_bandwidth: { type: "string", pattern: "^\\d+[kmg]?bps$" },
+        disk_space: {
+          type: "string",
+          pattern: "^\\d+[KMGTkmgt]?[Bb]?$",
+          description:
+            "Disk space limit (e.g., '1g', '500m'). Units may be upper- or lower-case (k, m, g, t).",
+        },
+        network_bandwidth: {
+          type: "string",
+          pattern: "^\\d+[KMGkmg]?[Bb]ps$",
+          description:
+            "Network bandwidth limit (e.g., '10mbps'). Units may be upper- or lower-case (k, m, g).",
+        },
       },
     },
   },
