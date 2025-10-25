@@ -174,7 +174,7 @@ class InMemoryQueue {
         // convert wildcard to RegExp
         const esc = pattern
           .split("*")
-          .map((s) => s.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"))
+          .map((s) => s.replace(/[.*+?^${}()|[\\]]/g, "\\$&"))
           .join(".*");
         this._handlers.push({ pattern: new RegExp(`^${esc}$`), fn });
         return;
