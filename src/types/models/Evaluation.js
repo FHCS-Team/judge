@@ -3,4 +3,4 @@
 const Result = {};
 const isValidResult = (result) => {};
 
-export { Result, isValidResult };
+module.exports = { Result, isValidResult };
