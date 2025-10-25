@@ -3,4 +3,4 @@ const Problem = {};
 
 const isValidProblem = (problem) => {};
 
-export { Problem, isValidProblem };
+module.exports = { Problem, isValidProblem };
