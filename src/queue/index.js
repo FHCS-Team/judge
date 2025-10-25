@@ -37,7 +37,7 @@ const { getValidator } = require("../types/schemaRegistry");
 // Obtain compiled validators from the central registry (may be null)
 const resultPayloadValidate = getValidator("resultPayload");
 const problemValidate = getValidator("problemSchema");
-const submissionValidate = getValidator("submission");
+const submissionValidate = getValidator("submissionSchema");
 
 class InMemoryQueue {
   constructor(opts = {}) {

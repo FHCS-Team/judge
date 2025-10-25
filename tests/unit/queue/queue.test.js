@@ -1,4 +1,4 @@
-const { InMemoryQueue } = require("../../src/queue/index");
+const { InMemoryQueue } = require("#queue/index");
 
 describe("InMemoryQueue", () => {
   test("processes messages with ack", async () => {

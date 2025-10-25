@@ -8,5 +8,5 @@ const submissionSchema = require("./submission");
 module.exports = {
   resultPayload,
   problemSchema,
-  submission: submissionSchema,
+  submissionSchema,
 };
