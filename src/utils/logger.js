@@ -1,3 +1,7 @@
+/**
+ * Simple pino logger
+ */
+// TODO: prom-client integration for metrics
 const pino = require("pino");
 
 const logger = pino({
