@@ -29,4 +29,4 @@ const Rubric = {};
 // TODO: implement validation logic
 const isValidRubric = (rubric) => {};
 
-export { Rubric, RubricTypes, isValidRubric };
+module.exports = { Rubric, RubricTypes, isValidRubric };
