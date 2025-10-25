@@ -191,7 +191,7 @@ class InMemoryQueue {
 
   // Internal: attempt to start jobs while concurrency allows
   _drain() {
-    if (!this._handler && this._handlers.size === 0) return;
+    if (!this._handler && this._handlers.length === 0) return;
     // process as many as allowed
     while (this._processing < this.concurrency && this._queue.length > 0) {
       const msg = this._queue.shift();
