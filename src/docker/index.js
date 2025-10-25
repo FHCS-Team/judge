@@ -1,30 +1,23 @@
-// dockerode wrapper, export functions from other docker-related modules
-const { pullImage, removeImage, listImages, pushImage } = require("./image");
+/**
+ * dockerode wrapper to be internally used by JUDGE modules
+ */
+const Docker = require("dockerode");
+const logger = require("../utils/logger");
 
-const {
-  createContainer,
-  startContainer,
-  stopContainer,
-  createSnapshot,
-  restoreSnapshot,
-} = require("./container");
+/**
+ * Dockerode instance, configured from environment.
+ * @type {import('dockerode')}
+ */
+const docker = new Docker();
 
-const { execInContainer } = require("./exec");
+/**
+ * In-memory container registry (id -> meta object).
+ * @type {Object.<string, {id: string, name: string, image: string, created?: string, state: Object}>}
+ */
+const containers = {};
 
 module.exports = {
-  // Image functions
-  pullImage,
-  removeImage,
-  listImages,
-  pushImage, // This function requires authentication
-
-  // Container functions
-  createContainer,
-  startContainer,
-  stopContainer,
-  createSnapshot,
-  restoreSnapshot,
-
-  // Exec functions
-  execInContainer,
+  docker,
+  containers,
+  logger,
 };
