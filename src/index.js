@@ -2,16 +2,29 @@ const logger = require("./utils/logger");
 
 logger.info("FHCS - JUDGE started!");
 
-// If run directly, kick off a small demo that exercises the processor.
-if (require.main === module) {
-  // require the demo runner which will call the processor
-  (async () => {
+/**
+ * Start the main JUDGE process. This function is intentionally light-weight
+ * so `src/processor.js` can remain a pure module. Callers can require this
+ * module and invoke `start()` to begin the main flow. Options may include
+ * { demo: true } to run the demo pipeline.
+ */
+async function start(options = {}) {
+  logger.info({ options }, "starting main flow");
+
+  if (options.demo) {
+    // require demo lazily so importing `src/index.js` doesn't pull demo code
     try {
       const demo = require("../demo/run-demo-processor");
       await demo.runDemo();
     } catch (err) {
-      logger.error({ err }, "failed to run processor demo");
-      process.exitCode = 1;
+      logger.error({ err }, "failed to run demo from start()");
+      throw err;
     }
-  })();
+  }
+
+  // future startup tasks (servers, message consumers, metrics) go here
 }
+
+module.exports = {
+  start,
+};
