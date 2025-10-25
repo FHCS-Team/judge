@@ -20,7 +20,7 @@ function registerSubmissionHandler(queue) {
 
       // Create a result event payload (basic)
       const metadata = {};
-      if (typeof 0.05 === "number") metadata.execution_time_seconds = 0.05;
+      metadata.execution_time_seconds = 0.05;
       const memPeak = msg.payload.resources && msg.payload.resources.memory_mb;
       if (typeof memPeak === "number") metadata.memory_peak_mb = memPeak;
 
