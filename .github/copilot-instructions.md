@@ -1,4 +1,3 @@
-```markdown
 # Quick guidance for AI contributors — FHCS JUDGE
 
 Keep this short and specific to this repo. Follow these project patterns when writing code, tests, or edits.
@@ -53,4 +52,3 @@ Keep this short and specific to this repo. Follow these project patterns when wr
   - Add unit tests that follow the repo's structure — aim for a small happy-path test plus 1 edge case.
 
 If anything here is unclear or you want me to expand/shorten sections, tell me which area (architecture, tests, validation, or integrations) and I'll iterate.
-```
