@@ -14,11 +14,6 @@ async function run() {
   // register result handler using prefix pattern
   registerResultHandler(q);
 
-  // register a prefix handler example: all 'result.' events
-  q.registerHandler("result.", async (msg, { ack }) => {
-    logger.info("Prefix-catcher: result.*", { type: msg.type });
-    ack();
-  });
 
   // Start queue without default handler (we rely on registered handlers)
   q.start();
