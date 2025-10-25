@@ -135,6 +135,11 @@ module.exports = {
         additionalProperties: false,
         properties: {
           rubric_id: { type: "string", pattern: "^[a-z][a-z0-9_-]{1,31}$" },
+          container_id: {
+            type: "string",
+            pattern: "^[a-z][a-z0-9_-]{1,31}$",
+            description: "Identifier of the container this rubric applies to",
+          },
           rubric_name: { type: "string" },
           rubric_type: {
             type: "string",

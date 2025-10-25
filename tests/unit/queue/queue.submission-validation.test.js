@@ -1,4 +1,4 @@
-const { InMemoryQueue } = require("../../src/queue/index");
+const { InMemoryQueue } = require("#queue/index");
 
 describe("InMemoryQueue submission validation", () => {
   test("throws when enqueueing a submission missing required fields", () => {
