@@ -227,6 +227,7 @@ class InMemoryQueue {
         const t = setTimeout(() => {
           try {
             // Always requeue internal retries so that an orderly shutdown can finish work.
+            msg._internal = true;
             this._queue.push(msg);
             this._drain();
           } finally {
