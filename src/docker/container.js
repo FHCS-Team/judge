@@ -3,6 +3,82 @@
  */
 
 const { docker, containers, logger } = require("./index");
+const fs = require("fs");
+const path = require("path");
+
+/**
+ * Build a Docker image from a Dockerfile.
+ * @param {string} tag - The tag for the built image.
+ * @param {string} dockerfilePath - Path to the Dockerfile.
+ * @param {string} contextPath - Build context directory.
+ * @returns {Promise<string>} Resolves to the image tag if successful.
+ * @throws {Error} If build fails.
+ */
+const buildImage = async (tag, dockerfilePath, contextPath) => {
+  logger.info({ tag, dockerfilePath, contextPath }, "Building Docker image");
+
+  try {
+    // Verify dockerfile exists
+    if (!fs.existsSync(dockerfilePath)) {
+      throw new Error(`Dockerfile not found: ${dockerfilePath}`);
+    }
+
+    // Verify context directory exists
+    if (!fs.existsSync(contextPath)) {
+      throw new Error(`Build context not found: ${contextPath}`);
+    }
+
+    const stream = await docker.buildImage(
+      {
+        context: contextPath,
+        src: ["."], // Include all files in context
+      },
+      {
+        t: tag,
+        dockerfile: path.relative(contextPath, dockerfilePath),
+        rm: true, // Remove intermediate containers
+        forcerm: true, // Always remove intermediate containers
+      },
+    );
+
+    // Process build stream
+    return new Promise((resolve, reject) => {
+      const output = [];
+
+      docker.modem.followProgress(
+        stream,
+        (error, result) => {
+          if (error) {
+            logger.error({ tag, error }, "Docker build failed");
+            reject(error);
+          } else {
+            logger.info({ tag }, "Docker build completed successfully");
+            resolve(tag);
+          }
+        },
+        (event) => {
+          if (event.stream) {
+            output.push(event.stream);
+            // Log progress for debugging
+            logger.debug(
+              { tag, stream: event.stream.trim() },
+              "Build progress",
+            );
+          }
+          if (event.error) {
+            logger.error({ tag, error: event.error }, "Build error");
+          }
+        },
+      );
+    });
+  } catch (error) {
+    logger.error(
+      { tag, dockerfilePath, contextPath, error: error.message },
+      "Failed to build image",
+    );
+    throw error;
+  }
+};
 
 /**
  * Create a new Docker container.
@@ -109,6 +185,7 @@ const removeContainer = async (
 };
 
 module.exports = {
+  buildImage,
   createContainer,
   startContainer,
   stopContainer,

@@ -6,6 +6,9 @@ module.exports = {
     problem_id: { type: "string" },
     team_id: { type: ["string", "null"] },
     timestamp: { type: ["string", "null"], format: "date-time" },
+    sha256: { type: ["string", "null"], pattern: "^[a-f0-9]{64}$" },
+    archive_url: { type: ["string", "null"] },
+    archive_data: { type: ["string", "object", "null"] },
     resources: {
       type: "object",
       additionalProperties: false,

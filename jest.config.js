@@ -35,9 +35,8 @@ const config = {
   coverageDirectory: "coverage",
 
   // An array of regexp pattern strings used to skip coverage collection
-  // coveragePathIgnorePatterns: [
-  //   "/node_modules/"
-  // ],
+  // An array of regexp pattern strings used to skip coverage collection
+  coveragePathIgnorePatterns: ["/node_modules/"],
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: "v8",
@@ -51,7 +50,14 @@ const config = {
   // ],
 
   // An object that configures minimum threshold enforcement for coverage results
-  // coverageThreshold: undefined,
+  coverageThreshold: {
+    global: {
+      // statements: 90,
+      // branches: 90,
+      // functions: 90,
+      // lines: 90,
+    },
+  },
 
   // A path to a custom dependency extractor
   // dependencyExtractor: undefined,

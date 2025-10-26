@@ -5,18 +5,30 @@ const { docker, logger } = require("./index");
 
 /**
  * Create a new Docker network.
- * @param {import("dockerode").NetworkCreateOptions} [networkOptions={}] - Dockerode network creation options.
+ * @param {string|import("dockerode").NetworkCreateOptions} nameOrOptions - Network name or Dockerode network creation options.
  * @returns {Promise<Object>} Resolves to the network inspect info object.
  * @throws {Error} If network creation fails.
  */
-const createNetwork = async (networkOptions = {}) => {
+const createNetwork = async (nameOrOptions = {}) => {
   try {
+    let networkOptions;
+
+    if (typeof nameOrOptions === "string") {
+      networkOptions = {
+        Name: nameOrOptions,
+        CheckDuplicate: true,
+        Driver: "bridge",
+      };
+    } else {
+      networkOptions = nameOrOptions;
+    }
+
     const network = await docker.createNetwork(networkOptions);
     const info = await network.inspect();
-    logger.debug({ id: info.Id }, "network created");
+    logger.debug({ id: info.Id, name: info.Name }, "network created");
     return info;
   } catch (err) {
-    logger.error({ err, options: networkOptions }, "failed to create network");
+    logger.error({ err, options: nameOrOptions }, "failed to create network");
     throw err;
   }
 };

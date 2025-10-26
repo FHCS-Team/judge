@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/FHCS-Team/judge/",
+  "$comment": "JSON Schema for judge problem package config.json",
   "title": "Problem Configuration Schema",
   "description": "Configuration schema for judge problems supporting multi-container environments with build/evaluation stage separation",
   "type": "object",
@@ -29,7 +30,14 @@
     },
     "project_type": {
       "type": "string",
-      "enum": ["algorithm", "web_api", "full_stack_web", "database_design", "cli_tool", "data_processing"],
+      "enum": [
+        "algorithm",
+        "web_api",
+        "full_stack_web",
+        "database_design",
+        "cli_tool",
+        "data_processing"
+      ],
       "description": "Type of project (see https://github.com/FHCS-Team/judge/ for details)"
     },
     "containers": {
@@ -125,7 +133,7 @@
           },
           "mount_submission_at": {
             "type": "string",
-            "default": "/workspace",
+            "default": "/workspace/submission",
             "description": "Path where submissions will be mounted"
           },
           "port": {
@@ -215,8 +223,8 @@
       "description": "Evaluation rubric definitions",
       "items": {
         "type": "object",
-        "required": ["rubric_id", "rubric_type", "max_score", "container_id"],
-        "additionalProperties": false,
+        "required": ["rubric_id", "rubric_type", "max_score"],
+        "additionalProperties": true,
         "properties": {
           "rubric_id": {
             "type": "string",
@@ -229,7 +237,16 @@
           },
           "rubric_type": {
             "type": "string",
-            "enum": ["test_cases", "performance_benchmark", "code_quality", "security_scan", "api_endpoints", "database_integrity", "ui_tests", "custom"],
+            "enum": [
+              "test_cases",
+              "performance_benchmark",
+              "code_quality",
+              "security_scan",
+              "api_endpoints",
+              "database_integrity",
+              "ui_tests",
+              "custom"
+            ],
             "description": "Type of rubric evaluation"
           },
           "description": {
