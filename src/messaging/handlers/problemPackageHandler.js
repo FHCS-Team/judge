@@ -11,6 +11,9 @@ function registerProblemPackageHandler(queue) {
     throw new Error("queue must support registerHandler");
   }
 
+  // Reuse a single processor instance for the handler to avoid repeated initialization
+  const processor = new JudgeProcessor();
+
   queue.registerHandler("problem_package", async (msg, { ack, nack }) => {
     logger.info("Received problem package", {
       problem_id: msg.payload && msg.payload.problem_id,
@@ -19,7 +22,7 @@ function registerProblemPackageHandler(queue) {
     });
 
     try {
-      const processor = new JudgeProcessor();
+      // processor is reused from module scope
 
       // Extract problem package data from message payload
       const packageData = {

@@ -18,6 +18,9 @@ const { validateProblemConfig } = require("./types/schemaRegistry");
 const { ArchiveManager } = require("./utils/archive");
 const { Downloader } = require("./utils/downloader");
 
+// Constants
+const NANOSECONDS_PER_SECOND = 1e9;
+
 /**
  * Judge Processor - implements the FHCS Judge workflow
  *
@@ -40,6 +43,8 @@ class JudgeProcessor {
     this.problemsDir = path.resolve(this.dataDir, "problems");
     this.submissionsDir = path.resolve(this.dataDir, "submissions");
     this.artifactsDir = path.resolve(this.dataDir, "artifacts");
+    // configurable defaults
+    this.defaultSleepSeconds = options.defaultSleepSeconds || 3600; // fallback keep-alive
 
     // Ensure directories exist
     this.ensureDirectories();

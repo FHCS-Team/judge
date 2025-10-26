@@ -60,8 +60,14 @@ class ArchiveManager {
       try {
         await this.extractArchive(tempFile, destDir);
       } finally {
-        // Cleanup temp file
-        await fs.promises.unlink(tempFile).catch(() => {});
+        // Cleanup temp file — log any failure to help debugging
+        await fs.promises.unlink(tempFile).catch((err) => {
+          try {
+            logger.debug({ err, tempFile }, "Failed to cleanup temp file");
+          } catch (e) {
+            // best effort: swallow if logger fails
+          }
+        });
       }
 
       logger.info({ destDir }, "Archive buffer extracted successfully");

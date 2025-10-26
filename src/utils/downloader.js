@@ -82,14 +82,15 @@ class Downloader {
 /**
  * Download file from URL using config/axios.js
  */
+// Create a single downloader instance to avoid allocating on every call
+const _downloaderInstance = new Downloader();
+
 const download = async (url, outputPath) => {
-  const downloader = new Downloader();
-  return await downloader.downloadFile(url, outputPath);
+  return await _downloaderInstance.downloadFile(url, outputPath);
 };
 
 const upload = async (filePath, uploadUrl) => {
-  const downloader = new Downloader();
-  return await downloader.uploadFile(filePath, uploadUrl);
+  return await _downloaderInstance.uploadFile(filePath, uploadUrl);
 };
 
 /**

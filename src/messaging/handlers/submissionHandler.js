@@ -11,6 +11,9 @@ function registerSubmissionHandler(queue) {
     throw new Error("queue must support registerHandler");
   }
 
+  // Reuse a single processor instance for the handler to avoid repeated initialization
+  const processor = new JudgeProcessor();
+
   queue.registerHandler("submission", async (msg, { ack, nack }) => {
     logger.info("Received submission", {
       id: msg.payload && msg.payload.submission_id,
@@ -19,7 +22,7 @@ function registerSubmissionHandler(queue) {
     });
 
     try {
-      const processor = new JudgeProcessor();
+      // processor is reused from module scope
 
       // Extract submission data from message payload
       const submissionData = {

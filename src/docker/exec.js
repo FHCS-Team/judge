@@ -46,7 +46,11 @@ const executeCommand = async (containerId, command, execOptions = {}) => {
           try {
             // stream to host stdout for live logs
             process.stdout.write(chunk);
-          } catch (e) {}
+          } catch (e) {
+            try {
+              logger.debug({ err: e }, "Failed to write chunk to stdout");
+            } catch (__) {}
+          }
           stdoutChunks.push(Buffer.from(chunk));
           cb();
         },
@@ -56,7 +60,11 @@ const executeCommand = async (containerId, command, execOptions = {}) => {
         write(chunk, enc, cb) {
           try {
             process.stderr.write(chunk);
-          } catch (e) {}
+          } catch (e) {
+            try {
+              logger.debug({ err: e }, "Failed to write chunk to stderr");
+            } catch (__) {}
+          }
           stderrChunks.push(Buffer.from(chunk));
           cb();
         },
