@@ -1,8 +1,9 @@
 const logger = require("../../utils/logger");
+const { JudgeProcessor } = require("../../processor");
 
 /**
  * Register submission handler on a queue instance.
- * The handler simulates evaluation work and publishes a result message back to the same queue.
+ * The handler processes submission evaluations using the complete judge workflow.
  * @param {InMemoryQueue} queue
  */
 function registerSubmissionHandler(queue) {
@@ -13,45 +14,97 @@ function registerSubmissionHandler(queue) {
   queue.registerHandler("submission", async (msg, { ack, nack }) => {
     logger.info("Received submission", {
       id: msg.payload && msg.payload.submission_id,
+      problem_id: msg.payload && msg.payload.problem_id,
+      team_id: msg.payload && msg.payload.team_id,
     });
+
     try {
-      // Simulate async evaluation (short sleep)
-      await new Promise((r) => setTimeout(r, 50));
+      const processor = new JudgeProcessor();
 
-      // Create a result event payload (basic)
-      const metadata = {};
-      metadata.execution_time_seconds = 0.05;
-      const memPeak = msg.payload.resources && msg.payload.resources.memory_mb;
-      if (typeof memPeak === "number") metadata.memory_peak_mb = memPeak;
-
-      const payload = {
+      // Extract submission data from message payload
+      const submissionData = {
         submission_id: msg.payload.submission_id || "unknown",
         problem_id: msg.payload.problem_id || "unknown",
-        status: "completed",
-        evaluated_at: new Date().toISOString(),
-        execution_status: "success",
-        timed_out: false,
-        total_score: 100,
-        max_score: 100,
-        percentage: 100,
-        metadata: Object.keys(metadata).length ? metadata : undefined,
+        team_id: msg.payload.team_id || "unknown",
+        archive_url: msg.payload.archive_url,
+        archive_data: msg.payload.archive_data,
       };
 
-      // Enqueue result event back onto the queue (mark as internal so it can be enqueued during shutdown)
+      // Submit submission if we have archive data/URL
+      if (submissionData.archive_url || submissionData.archive_data) {
+        await processor.submitSubmission(submissionData);
+      }
+
+      // Run evaluation
+      const evaluationResult = await processor.runEvaluation({
+        submission_id: submissionData.submission_id,
+        problem_id: submissionData.problem_id,
+        team_id: submissionData.team_id,
+      });
+
+      // Create result event payload from evaluation result
+      const resultPayload = {
+        submission_id: evaluationResult.submission_id,
+        problem_id: evaluationResult.problem_id,
+        team_id: evaluationResult.team_id,
+        status: evaluationResult.status,
+        evaluated_at:
+          evaluationResult.completed_at || evaluationResult.failed_at,
+        execution_status:
+          evaluationResult.status === "completed" ? "success" : "error",
+        timed_out: false,
+        total_score: evaluationResult.total_score || 0,
+        max_score: evaluationResult.max_score || 0,
+        percentage: evaluationResult.percentage || 0,
+        metadata: {
+          evaluation_id: evaluationResult.evaluation_id,
+          containers: evaluationResult.containers,
+          rubrics: evaluationResult.rubrics,
+          ...evaluationResult.metadata,
+        },
+        error: evaluationResult.error,
+      };
+
+      // Enqueue result event back onto the queue
       queue.enqueue({
         type: "result.evaluation.completed",
-        payload,
+        payload: resultPayload,
         max_retries: 0,
         _internal: true,
       });
 
       ack();
     } catch (err) {
-      // log error with structured logger (include stack when available)
+      // Log error with structured logger (include stack when available)
       logger.error("Submission handler error (caught)", {
+        submission_id: msg.payload && msg.payload.submission_id,
+        problem_id: msg.payload && msg.payload.problem_id,
         message: err && err.message,
         stack: err && err.stack,
       });
+
+      // Send error result event
+      const errorPayload = {
+        submission_id: (msg.payload && msg.payload.submission_id) || "unknown",
+        problem_id: (msg.payload && msg.payload.problem_id) || "unknown",
+        team_id: (msg.payload && msg.payload.team_id) || "unknown",
+        status: "failed",
+        evaluated_at: new Date().toISOString(),
+        execution_status: "error",
+        timed_out: false,
+        total_score: 0,
+        max_score: 0,
+        percentage: 0,
+        error: err.message,
+      };
+
+      queue.enqueue({
+        type: "result.evaluation.failed",
+        payload: errorPayload,
+        max_retries: 0,
+        _internal: true,
+      });
+
       nack(err);
     }
   });

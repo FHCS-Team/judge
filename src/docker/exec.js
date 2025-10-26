@@ -41,21 +41,28 @@ const executeCommand = async (containerId, command, execOptions = {}) => {
 
     // dockerode returns a multiplexed stream when Tty=false
     await new Promise((resolve, reject) => {
-      docker.modem.demuxStream(
-        execStream,
-        new stream.Writable({
-          write(chunk, enc, cb) {
-            stdoutChunks.push(chunk);
-            cb();
-          },
-        }),
-        new stream.Writable({
-          write(chunk, enc, cb) {
-            stderrChunks.push(chunk);
-            cb();
-          },
-        }),
-      );
+      const stdoutCollector = new stream.Writable({
+        write(chunk, enc, cb) {
+          try {
+            // stream to host stdout for live logs
+            process.stdout.write(chunk);
+          } catch (e) {}
+          stdoutChunks.push(Buffer.from(chunk));
+          cb();
+        },
+      });
+
+      const stderrCollector = new stream.Writable({
+        write(chunk, enc, cb) {
+          try {
+            process.stderr.write(chunk);
+          } catch (e) {}
+          stderrChunks.push(Buffer.from(chunk));
+          cb();
+        },
+      });
+
+      docker.modem.demuxStream(execStream, stdoutCollector, stderrCollector);
 
       execStream.on("end", resolve);
       execStream.on("error", reject);
