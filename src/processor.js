@@ -315,6 +315,9 @@ class JudgeProcessor {
     try {
       await fs.promises.mkdir(submissionDir, { recursive: true });
 
+      let archiveBuffer = null;
+      let sha256 = null;
+
       // Download or extract submission
       if (archive_url) {
         const downloader = new Downloader();
@@ -324,21 +327,66 @@ class JudgeProcessor {
         );
         await downloader.downloadFile(archive_url, archiveFile);
 
+        // Compute SHA-256 hash of the archive
+        archiveBuffer = await fs.promises.readFile(archiveFile);
+        sha256 = crypto
+          .createHash("sha256")
+          .update(archiveBuffer)
+          .digest("hex");
+
         const archiver = new ArchiveManager();
         await archiver.extractArchive(archiveFile, submissionDir);
         await fs.promises.unlink(archiveFile);
       } else if (archive_data) {
+        // If archive_data is provided, compute hash from it
+        archiveBuffer = Buffer.isBuffer(archive_data)
+          ? archive_data
+          : Buffer.from(archive_data);
+        sha256 = crypto
+          .createHash("sha256")
+          .update(archiveBuffer)
+          .digest("hex");
+
         const archiver = new ArchiveManager();
-        await archiver.extractBuffer(archive_data, submissionDir);
+        await archiver.extractBuffer(archiveBuffer, submissionDir);
       } else {
         throw new Error("Either archive_url or archive_data must be provided");
       }
 
-      logger.info(
-        { submission_id, problem_id, submissionDir },
-        "Submission stored",
+      // Validate submission package (check for config.json if expected)
+      await this.validateSubmissionPackage(submissionDir);
+
+      // Record submission metadata
+      const metadata = {
+        submission_id,
+        problem_id,
+        team_id,
+        sha256,
+        received_at: new Date().toISOString(),
+        archive_source: archive_url ? "url" : "data",
+        archive_url: archive_url || null,
+        archive_size_bytes: archiveBuffer ? archiveBuffer.length : null,
+        extracted_to: submissionDir,
+      };
+
+      const metadataFile = path.resolve(submissionDir, "metadata.json");
+      await fs.promises.writeFile(
+        metadataFile,
+        JSON.stringify(metadata, null, 2),
       );
-      return { status: "success", submission_id, problem_id, submissionDir };
+
+      logger.info(
+        { submission_id, problem_id, sha256, submissionDir },
+        "Submission stored and validated",
+      );
+      return {
+        status: "success",
+        submission_id,
+        problem_id,
+        submissionDir,
+        sha256,
+        metadata,
+      };
     } catch (error) {
       logger.error(
         { submission_id, problem_id, error: error.message },
@@ -346,6 +394,35 @@ class JudgeProcessor {
       );
       throw error;
     }
+  }
+
+  /**
+   * Validate submission package structure
+   * @param {string} submissionDir - Path to extracted submission package
+   */
+  async validateSubmissionPackage(submissionDir) {
+    // Check if config.json exists (optional for submissions)
+    const configPath = path.resolve(submissionDir, "config.json");
+    const hasConfig = await this.fileExists(configPath);
+
+    if (hasConfig) {
+      try {
+        const config = JSON.parse(
+          await fs.promises.readFile(configPath, "utf8"),
+        );
+        logger.debug(
+          { submissionDir, config },
+          "Submission package includes config.json",
+        );
+      } catch (error) {
+        logger.warn(
+          { submissionDir, error: error.message },
+          "Submission config.json exists but is invalid",
+        );
+      }
+    }
+
+    logger.debug({ submissionDir }, "Submission package validation passed");
   }
 
   /**
