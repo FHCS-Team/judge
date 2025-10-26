@@ -132,3 +132,11 @@ dist
 
 # Credentials & keys
 *.pem
+
+# Data folders
+/data
+
+# Don't include mock packages files, but include the _archived folder
+mocks/packages/*
+!mocks/packages/_archived
+

@@ -31,7 +31,6 @@
       },
       "accepts_submission": true,
       "submission_package_id": "logging_service",
-      "mount_submission_at": "/workspace/collector",
       "port": 8080,
       "health_check": {
         "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],

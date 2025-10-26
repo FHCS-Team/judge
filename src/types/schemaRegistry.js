@@ -39,4 +39,37 @@ function getValidator(name) {
   return validators.get(name) || null;
 }
 
-module.exports = { registerSchema, getValidator };
+/**
+ * Validate a problem configuration against the problem schema
+ * @param {Object} config - Problem configuration object
+ * @returns {Object} Validation result with valid boolean and errors array
+ */
+function validateProblemConfig(config) {
+  let validator =
+    getValidator("problemPackage") || getValidator("problemSchema");
+  if (!validator) {
+    // Try to load problem schema if not already registered
+    try {
+      const problemSchema = require("./schemas/problemPackage");
+      registerSchema("problemPackage", problemSchema);
+      validator = getValidator("problemPackage");
+    } catch (error) {
+      return {
+        valid: false,
+        errors: ["Problem schema not available: " + error.message],
+      };
+    }
+  }
+
+  const valid = validator(config);
+  return {
+    valid,
+    errors: valid
+      ? []
+      : (validator.errors || []).map(
+          (err) => `${err.instancePath} ${err.message}`,
+        ),
+  };
+}
+
+module.exports = { registerSchema, getValidator, validateProblemConfig };
