@@ -1,8 +1,6 @@
 {
-  "properties": {
-    "headers": {
-      "x-event-type": "judge.submission.created"
-    }
+  "fields": {
+    "routingKey": "judge.submission.created"
   },
   "content": {
     "submission_id": "string",

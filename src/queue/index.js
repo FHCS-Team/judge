@@ -31,10 +31,15 @@ async function publish(routingKey, content, options = {}) {
     await ch.assertExchange(JUDGE_EXCHANGE, JUDGE_EXCHANGE_TYPE, {
       durable: true,
     });
+    // Wrap content with a fields.routingKey property instead of using header-based routing
+    const message = {
+      fields: { routingKey },
+      content,
+    };
     const ok = ch.publish(
       JUDGE_EXCHANGE,
       routingKey,
-      Buffer.from(JSON.stringify(content)),
+      Buffer.from(JSON.stringify(message)),
       options,
     );
     return ok;

@@ -1,8 +1,6 @@
 {
-  "properties": {
-    "headers": {
-      "x-event-type": "judge.problem.created"
-    }
+  "fields": {
+    "routingKey": "judge.problem.created"
   },
   "content": {
     "package_id": "string",

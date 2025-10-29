@@ -13,9 +13,10 @@ const processor = new JudgeProcessor();
 module.exports = async function onProblemReceived(msg) {
   if (!msg || !msg.properties) return false;
 
-  const headers = msg.properties.headers || {};
-  const eventType = headers["x-event-type"] || headers["X-Event-Type"] || null;
-  if (eventType !== "judge.problem.created") return false;
+  // Use AMQP routing key to determine event type (preferred over custom headers)
+  const routingKey =
+    msg.fields && msg.fields.routingKey ? msg.fields.routingKey : null;
+  if (routingKey !== "judge.problem.created") return false;
 
   let payload;
   try {
