@@ -21,6 +21,8 @@ Keep this short and specific to this repo. Follow these project patterns when wr
   - `src/types/schemaRegistry.js` and `src/types/schemas/` — AJV validators for payloads (use `getValidator(name)` to validate payloads)
   - `src/storage/database.js` — persistence layer (better-sqlite3)
   - `src/services/` — higher-level business logic that orchestrates docker + storage
+  - `mocks/packages/{name}` — sample problem packages for tests and local dev
+  - `data/` — local storage (artifacts produced during code evaluation)
 
 - Message & data flow (high-level):
   1. Incoming submissions or problem packages are published/received via `src/messaging`.
@@ -51,4 +53,4 @@ Keep this short and specific to this repo. Follow these project patterns when wr
   - Keep changes minimal and localized; preserve public APIs.
   - Add unit tests that follow the repo's structure — aim for a small happy-path test plus 1 edge case.
 
-If anything here is unclear or you want me to expand/shorten sections, tell me which area (architecture, tests, validation, or integrations) and I'll iterate.
+- When needed to check JUDGE output: check `logs/` for runtime logs, and `data/` for stored artifacts (e.g. evaluation results, temporary files) instead of using terminal, because if the agent try to access terminal, it would kill the process.
