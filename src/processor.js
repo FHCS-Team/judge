@@ -46,6 +46,33 @@ class JudgeProcessor {
     // configurable defaults
     this.defaultSleepSeconds = options.defaultSleepSeconds || 3600; // fallback keep-alive
 
+    // Optionally wipe data on start when WIPE_ON_START env var is set to a
+    // truthy value. This is an explicit global flag to allow test runs to
+    // start from a clean slate. We only remove the configured dataDir to
+    // avoid accidental filesystem wide deletes.
+    if (process.env.WIPE_ON_START) {
+      try {
+        logger.warn(
+          { dataDir: this.dataDir },
+          "WIPE_ON_START enabled: wiping data directory",
+        );
+        // remove the data directory and all contents; use force to ignore absence
+        // and be careful to only remove the intended dataDir
+        fs.promises
+          .rm(this.dataDir, { recursive: true, force: true })
+          .catch((e) => {
+            // log and continue
+            logger.error({ err: e.message }, "Failed to wipe data directory");
+          });
+      } catch (e) {
+        // swallow but log
+        logger.error(
+          { err: e.message },
+          "Error while attempting to wipe data directory",
+        );
+      }
+    }
+
     // Ensure directories exist
     this.ensureDirectories();
   }
@@ -313,7 +340,70 @@ class JudgeProcessor {
     );
 
     try {
+      // Ensure submission directory exists
       await fs.promises.mkdir(submissionDir, { recursive: true });
+
+      // Idempotency: if a metadata.json already exists, return cached result
+      const metadataFile = path.resolve(submissionDir, "metadata.json");
+      if (await this.fileExists(metadataFile)) {
+        try {
+          const existing = JSON.parse(
+            await fs.promises.readFile(metadataFile, "utf8"),
+          );
+          logger.info(
+            { submission_id, problem_id, submissionDir },
+            "Submission already processed, returning existing metadata",
+          );
+          return {
+            status: "already_processed",
+            submission_id,
+            problem_id,
+            submissionDir,
+            sha256: existing.sha256 || null,
+            metadata: existing,
+          };
+        } catch (e) {
+          // If metadata file is corrupt, continue processing after logging
+          logger.warn(
+            { submission_id, problem_id, submissionDir, err: e.message },
+            "Existing metadata.json found but unreadable; continuing processing",
+          );
+        }
+      }
+
+      // Create an atomic lock file to avoid concurrent processing by multiple workers
+      const lockFile = path.resolve(submissionDir, ".processing.lock");
+      let lockHandle = null;
+      try {
+        // 'wx' will fail if file already exists
+        lockHandle = await fs.promises.open(lockFile, "wx");
+      } catch (err) {
+        if (err && err.code === "EEXIST") {
+          // Another worker is processing this submission; wait briefly for it to finish and check metadata
+          const maxWaitMs = 2000;
+          const interval = 200;
+          let waited = 0;
+          while (waited < maxWaitMs) {
+            await new Promise((r) => setTimeout(r, interval));
+            if (await this.fileExists(metadataFile)) {
+              const existing = JSON.parse(
+                await fs.promises.readFile(metadataFile, "utf8"),
+              );
+              return {
+                status: "already_processed",
+                submission_id,
+                problem_id,
+                submissionDir,
+                sha256: existing.sha256 || null,
+                metadata: existing,
+              };
+            }
+            waited += interval;
+          }
+          throw new Error("Submission is being processed by another worker");
+        }
+        throw err;
+      }
 
       let archiveBuffer = null;
       let sha256 = null;
@@ -369,11 +459,24 @@ class JudgeProcessor {
         extracted_to: submissionDir,
       };
 
-      const metadataFile = path.resolve(submissionDir, "metadata.json");
       await fs.promises.writeFile(
         metadataFile,
         JSON.stringify(metadata, null, 2),
       );
+
+      // Cleanup processing lock if held
+      try {
+        if (lockHandle) {
+          try {
+            await lockHandle.close();
+          } catch (e) {}
+          try {
+            await fs.promises.unlink(lockFile);
+          } catch (e) {}
+        }
+      } catch (e) {
+        // ignore cleanup errors
+      }
 
       logger.info(
         { submission_id, problem_id, sha256, submissionDir },
@@ -392,6 +495,19 @@ class JudgeProcessor {
         { submission_id, problem_id, error: error.message },
         "Failed to process submission",
       );
+      // Attempt to remove lock if present
+      try {
+        if (typeof lockHandle !== "undefined" && lockHandle) {
+          try {
+            await lockHandle.close();
+          } catch (e) {}
+          try {
+            await fs.promises.unlink(lockFile);
+          } catch (e) {}
+        }
+      } catch (e) {
+        // ignore
+      }
       throw error;
     }
   }
