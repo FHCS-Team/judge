@@ -1,6 +1,3 @@
-/**
- * Problem received consumer.
- */
 const logger = require("#utils/logger.js");
 
 /**

@@ -1,11 +1,8 @@
-/**
- * Submission received consumer.
- */
 const logger = require("#utils/logger.js");
 
 /**
  * Handle submission events from the message queue.
- * Expected header: headers['x-event-type'] === 'judge.submission.created'
+ * Expected routing key: routingKey === 'judge.submission.created'
  * Expected content (JSON): { submission_id, problem_id, submission_url }
  * @param {import("amqplib").Message} msg
  */
@@ -13,7 +10,9 @@ module.exports = async function onSubmissionReceived(msg) {
   if (!msg || !msg.properties) return false;
 
   const headers = msg.properties.headers || {};
-  const eventType = headers["x-event-type"] || headers["X-Event-Type"] || null;
+  // Prefer the broker routing key; fall back to legacy header for migration.
+  const routingKey = msg.fields && msg.fields.routingKey;
+  const eventType = routingKey || headers["x-event-type"] || headers["X-Event-Type"] || null;
   if (eventType !== "judge.submission.created") return false;
 
   let payload;

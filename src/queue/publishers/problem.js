@@ -1,3 +1,0 @@
-/**
- * Problem package building publisher.
- */
