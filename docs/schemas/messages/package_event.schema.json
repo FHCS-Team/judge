@@ -1,20 +1,16 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/FHCS-Team/judge/schemas/package_event.schema.json",
-  "title": "Problem Package Submission Payload",
-  "description": "Payload schema for `dmoj.problem.package.submitted` events (used inside the standard event envelope).",
-  "x-channel": "judge.package",
-  "type": "object",
-  "additionalProperties": false,
   "properties": {
-    "package_id": { "type": "string", "description": "Unique package identifier (publisher-generated)" },
-    "problem_id": { "type": ["string", "null"], "description": "Optional desired problem id (may be null for new problems)" },
-    "package_url": { "type": "string", "description": "URL where the package archive can be fetched (HTTP(S) or object store)" },
-    "checksum": { "type": "string", "description": "Optional checksum (sha256:...)" },
-    "version": { "type": "string", "description": "Optional package version" },
-    "uploader": { "type": "object", "additionalProperties": false, "properties": { "id": { "type": "string" }, "display_name": { "type": "string" } } },
-    "build_immediately": { "type": "boolean", "description": "Whether JUDGE should trigger image builds immediately", "default": false },
-    "metadata": { "type": "object", "additionalProperties": true }
+    "headers": {
+      "x-event-type": "judge.problem.created"
+    }
   },
-  "required": ["package_id", "package_url"]
+  "content": {
+    "package_id": "string",
+    "problem_id": "string",
+    "package_url": "string",
+    "checksum": "string",
+    "metadata": {
+      "": ""
+    }
+  }
 }
