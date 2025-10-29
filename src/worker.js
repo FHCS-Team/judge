@@ -3,16 +3,25 @@ const queue = require("./queue");
 
 const QUEUE_NAME = process.env.JUDGE_QUEUE_NAME || "judge-queue";
 const PREFETCH = parseInt(process.env.JUDGE_CONSUMER_PREFETCH || "1", 10);
-
 const EXCHANGE = process.env.JUDGE_EXCHANGE || "dmoj-events";
-// Default to 'topic' to match common setups and avoid PRECONDITION errors
-// when an existing exchange is already declared as 'topic'. Make configurable
-// via `JUDGE_EXCHANGE_TYPE` when needed.
 const EXCHANGE_TYPE = process.env.JUDGE_EXCHANGE_TYPE || "topic";
 const HEALTH_INTERVAL_MS = parseInt(
   process.env.JUDGE_HEALTH_INTERVAL_MS || "60000",
   10,
 );
+
+/**
+ * A set of functions
+ */
+const consumers = new Set();
+
+const addConsumer = (fn) => {
+  consumers.add(fn);
+};
+
+const removeConsumer = (fn) => {
+  consumers.delete(fn);
+};
 
 /**
  * Handle incoming messages.
@@ -21,16 +30,22 @@ const HEALTH_INTERVAL_MS = parseInt(
  */
 async function handleMessage(msg) {
   if (!msg) return;
-  let payload = null;
+  const identifier = msg.properties.messageId;
   try {
-    payload = JSON.parse(msg.content.toString());
-    // TODO: Add actual message handling logic here & nack if not consumed
+    for (const consumer of consumers) {
+      // try calling consumer(msg), if false or undefined, skip to next
+      // if all consumers return false/undefined, nack
+      const result = await consumer(msg);
+      if (result) {
+        break;
+      }
+    }
+    logger.debug(`Received new message ${identifier}`);
     logger.debug(msg);
+    throw new Error("No consumer handled message");
   } catch (err) {
-    logger.error(
-      "Worker failed to parse message",
-      err && err.message ? err.message : err,
-    );
+    logger.warn("Message failed parsing or skipped");
+    logger.debug(err.message);
     throw err;
   }
 }
@@ -73,7 +88,8 @@ async function startupOnce() {
     try {
       await ch.close();
     } catch (e) {
-      // ignore
+      logger.error("Failed to close message queue channel");
+      logger.debug(e);
     }
   }
 
@@ -115,4 +131,6 @@ async function init() {
 
 module.exports = {
   init,
+  addConsumer,
+  removeConsumer,
 };
