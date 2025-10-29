@@ -1,5 +1,7 @@
 const os = require("os");
 const crypto = require("crypto");
+const { ConsumerRegistry } = require("./consumers");
+
 const uuidv4 = (() => {
   if (typeof crypto.randomUUID === "function") return () => crypto.randomUUID();
   return () => {
@@ -33,6 +35,7 @@ const uuidv4 = (() => {
 const DEFAULT_JOB_MEMORY_MB = 512; // fallback per-job memory estimate
 const HOST_MEMORY_USAGE_RATIO = 0.8; // leave 20% buffer
 const { getValidator } = require("../types/schemaRegistry");
+const logger = require("../utils/logger");
 
 // Obtain compiled validators from the central registry (may be null)
 const resultPayloadValidate = getValidator("resultPayload");
@@ -62,6 +65,26 @@ class InMemoryQueue {
     this._waiting = [];
     // handlers stored as array of { pattern, fn }
     this._handlers = [];
+
+    // If WIPE_ON_START is set, clear any in-memory state (useful for tests).
+    if (process.env.WIPE_ON_START) {
+      try {
+        logger.warn("WIPE_ON_START enabled: clearing in-memory queue state");
+        this._queue = [];
+        this._processing = 0;
+        for (const t of this._retryTimers) {
+          clearTimeout(t);
+        }
+        this._retryTimers.clear();
+        this._waiting = [];
+      } catch (e) {
+        // non-fatal
+        logger.error(
+          { err: e.message },
+          "Failed to wipe in-memory queue state",
+        );
+      }
+    }
 
     // concurrency inferred from host memory and per-job estimate
     const totalMb = Math.floor(os.totalmem() / 1024 / 1024);
@@ -322,4 +345,5 @@ class InMemoryQueue {
 
 module.exports = {
   InMemoryQueue,
+  ConsumerRegistry,
 };
