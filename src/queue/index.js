@@ -25,7 +25,7 @@ async function bindQueue(channel, queueName, exchangeName, pattern = "") {
   await channel.bindQueue(q, ex, pattern);
 }
 
-async function publish(exchange, routingKey, content, options = {}) {
+async function publish(routingKey, content, options = {}) {
   const ch = await createChannel({ confirm: false });
   try {
     await ch.assertExchange(JUDGE_EXCHANGE, JUDGE_EXCHANGE_TYPE, {
