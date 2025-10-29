@@ -9,7 +9,7 @@ const amqp = require("amqplib");
 class Publisher {
   constructor(opts = {}) {
     this.rabbitUrl =
-      opts.rabbitUrl || process.env.RABBITMQ_URL || "amqp://localhost";
+      opts.rabbitUrl || process.env.JUDGE_QUEUE_URL || "amqp://localhost";
     this.queueName =
       opts.queueName || process.env.JUDGE_QUEUE_NAME || "judge-queue";
     this._conn = null;

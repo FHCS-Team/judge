@@ -4,7 +4,7 @@
 node - <<'NODE'
 const { Publisher } = require('../../src/messaging/publisher');
 (async () => {
-  const pub = new Publisher({ rabbitUrl: process.env.RABBITMQ_URL || 'amqp://localhost', queueName: process.env.JUDGE_QUEUE_NAME || 'judge-queue' });
+  const pub = new Publisher({ rabbitUrl: process.env.JUDGE_QUEUE_URL || 'amqp://localhost', queueName: process.env.JUDGE_QUEUE_NAME || 'judge-queue' });
   const envelope = {
     type: 'result.evaluation.completed',
     payload: {

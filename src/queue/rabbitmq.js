@@ -3,12 +3,20 @@ const os = require("os");
 const logger = require("../utils/logger");
 const { ConsumerRegistry } = require("./consumers");
 
+// lightweight id generator to avoid ESM-only uuid import in test env
+function _genId() {
+  return `msg-${Date.now().toString(36)}-${Math.floor(Math.random() * 0xfffff).toString(36)}`;
+}
+
 class RabbitMQQueue {
   constructor(opts = {}) {
     this.rabbitUrl =
-      opts.rabbitUrl || process.env.RABBITMQ_URL || "amqp://localhost";
+      opts.rabbitUrl || process.env.JUDGE_QUEUE_URL || "amqp://localhost";
     this.queueName =
       opts.queueName || process.env.JUDGE_QUEUE_NAME || "judge-queue";
+    // Exchange to publish/subscribe to (topic exchange)
+    this.exchangeName =
+      opts.exchangeName || process.env.JUDGE_EXCHANGE || "dmoj-events";
     this._conn = null;
     this._ch = null;
     this._handlers = [];
@@ -25,7 +33,15 @@ class RabbitMQQueue {
     try {
       this._conn = await amqp.connect(url);
       this._ch = await this._conn.createChannel();
+      // Ensure exchange exists and queue is declared
+      await this._ch.assertExchange(this.exchangeName, "topic", {
+        durable: true,
+      });
       await this._ch.assertQueue(this.queueName, { durable: true });
+      // Bind queue to exchange with a catch-all so the app's internal routing
+      // (based on envelope.type) continues to work. Specific bindings can be
+      // added later if desired.
+      await this._ch.bindQueue(this.queueName, this.exchangeName, "#");
       await this._ch.prefetch(this.prefetch);
       logger.info({ url }, `Connected to ${url}`);
     } catch (err) {
@@ -45,9 +61,10 @@ class RabbitMQQueue {
 
   async enqueue(msg) {
     await this.connect();
+    const id = (msg && msg.id) || _genId();
     const envelope = Object.assign(
       {
-        id: msg && msg.id ? msg.id : undefined,
+        id,
         type: (msg && msg.type) || "message",
         payload: (msg && msg.payload) || msg || {},
         created_at: new Date().toISOString(),
@@ -58,7 +75,26 @@ class RabbitMQQueue {
     );
 
     const buf = Buffer.from(JSON.stringify(envelope));
-    const ok = this._ch.sendToQueue(this.queueName, buf, { persistent: true });
+    // Publish to the configured exchange using envelope.type as the routing key.
+    // This allows other services to bind to the exchange with topic bindings
+    // while preserving the existing queue consumers which are bound with '#'.
+    const routingKey = envelope.type || "";
+    const ok = this._ch.publish(this.exchangeName, routingKey, buf, {
+      persistent: true,
+    });
+
+    // Log message event id for external messages (not internal system messages)
+    try {
+      if (!(msg && msg._internal)) {
+        logger.info(
+          { id: envelope.id, type: envelope.type, queue: this.queueName },
+          `Queued message ${envelope.id}`,
+        );
+      }
+    } catch (e) {
+      // don't let logging failures break enqueue
+    }
+
     return envelope.id || null;
   }
 
@@ -109,24 +145,83 @@ class RabbitMQQueue {
         envelope = JSON.parse(rawMsg.content.toString());
       } catch (e) {
         // malformed message: ack and drop
-        this._ch.ack(rawMsg);
+        try {
+          this._ch.ack(rawMsg);
+        } catch (e2) {}
         return;
       }
 
+      // Normalize message format: support both { type, payload: {...} }
+      // and flattened messages { type, ...fields }. If payload is missing
+      // but there are extra keys, move them into payload so consumers can
+      // read values consistently from envelope.payload.
+      try {
+        if (!envelope || typeof envelope !== "object") {
+          // malformed; ack and drop
+          try {
+            this._ch.ack(rawMsg);
+          } catch (e2) {}
+          return;
+        }
+
+        // If payload is missing or not an object, but other user fields exist,
+        // build a payload object from remaining keys.
+        const known = new Set([
+          "id",
+          "type",
+          "created_at",
+          "retries",
+          "max_retries",
+          "_raw",
+          "_internal",
+        ]);
+        if (!envelope.payload || typeof envelope.payload !== "object") {
+          // collect other keys into payload
+          const payload = {};
+          for (const k of Object.keys(envelope)) {
+            if (!known.has(k)) {
+              payload[k] = envelope[k];
+            }
+          }
+
+          // If payload is empty and envelope.payload was falsy, ensure payload is an object
+          envelope.payload = Object.keys(payload).length ? payload : {};
+
+          // Ensure id exists
+          if (!envelope.id) envelope.id = _genId();
+          if (!envelope.created_at)
+            envelope.created_at = new Date().toISOString();
+        }
+      } catch (e) {
+        try {
+          this._ch.ack(rawMsg);
+        } catch (e2) {}
+        return;
+      }
+
+      // ack/nack idempotency guard to avoid double-acking (which closes channel)
+      let ackedOrNacked = false;
+
       const ack = () => {
+        if (ackedOrNacked) return;
+        ackedOrNacked = true;
         try {
           this._ch.ack(rawMsg);
         } catch (e) {}
       };
 
       const nack = (err, opts = {}) => {
+        if (ackedOrNacked) return;
+        ackedOrNacked = true;
         try {
           // Increment retries and requeue if allowed
           envelope.retries = (envelope.retries || 0) + 1;
           const max = envelope.max_retries || 3;
           if (envelope.retries <= max) {
             // ack original and re-publish
-            this._ch.ack(rawMsg);
+            try {
+              this._ch.ack(rawMsg);
+            } catch (e) {}
             this._ch.sendToQueue(
               this.queueName,
               Buffer.from(JSON.stringify(envelope)),
@@ -134,7 +229,9 @@ class RabbitMQQueue {
             );
           } else {
             // final: ack and drop (could send to DLQ)
-            this._ch.ack(rawMsg);
+            try {
+              this._ch.ack(rawMsg);
+            } catch (e) {}
           }
         } catch (e) {
           try {
@@ -163,6 +260,13 @@ class RabbitMQQueue {
         }
       }
     });
+  }
+
+  // Provide a synchronous stats API similar to InMemoryQueue so StatusConsumer
+  // can call it without awaiting. We return conservative defaults when exact
+  // values are not available.
+  stats() {
+    return { queued: 0, processing: 0, concurrency: this.prefetch || 1 };
   }
 
   async close(timeoutMs = 30000) {

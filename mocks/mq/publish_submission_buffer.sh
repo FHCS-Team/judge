@@ -6,7 +6,7 @@ node - <<'NODE'
 const { Publisher } = require('../../src/messaging/publisher');
 const fs = require('fs');
 (async () => {
-  const pub = new Publisher({ rabbitUrl: process.env.RABBITMQ_URL || 'amqp://localhost', queueName: process.env.JUDGE_QUEUE_NAME || 'judge-queue' });
+  const pub = new Publisher({ rabbitUrl: process.env.JUDGE_QUEUE_URL || 'amqp://localhost', queueName: process.env.JUDGE_QUEUE_NAME || 'judge-queue' });
   // Create a small tar.gz buffer from fixtures (use existing sample archive if present)
   const sampleArchive = fs.readFileSync(__dirname + '/../../tests/fixtures/sample.tar.gz');
   const envelope = {
