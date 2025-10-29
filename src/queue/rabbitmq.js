@@ -1,5 +1,6 @@
 const amqp = require("amqplib");
 const os = require("os");
+const logger = require("../utils/logger");
 const { ConsumerRegistry } = require("./consumers");
 
 class RabbitMQQueue {
@@ -19,10 +20,27 @@ class RabbitMQQueue {
 
   async connect() {
     if (this._conn) return;
-    this._conn = await amqp.connect(this.rabbitUrl);
-    this._ch = await this._conn.createChannel();
-    await this._ch.assertQueue(this.queueName, { durable: true });
-    await this._ch.prefetch(this.prefetch);
+    const url = this.rabbitUrl;
+    logger.info({ url }, `Connecting to ${url}`);
+    try {
+      this._conn = await amqp.connect(url);
+      this._ch = await this._conn.createChannel();
+      await this._ch.assertQueue(this.queueName, { durable: true });
+      await this._ch.prefetch(this.prefetch);
+      logger.info({ url }, `Connected to ${url}`);
+    } catch (err) {
+      logger.error(
+        { err: err && err.message ? err.message : err, url },
+        `Failed to connect to ${url}`,
+      );
+      // cleanup any partial state
+      try {
+        if (this._conn) await this._conn.close();
+      } catch (e) {}
+      this._conn = null;
+      this._ch = null;
+      throw err;
+    }
   }
 
   async enqueue(msg) {
