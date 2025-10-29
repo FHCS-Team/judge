@@ -3,6 +3,7 @@
   "$id": "https://github.com/FHCS-Team/judge/schemas/result_event.schema.json",
   "title": "Result Event Schema",
   "description": "Envelope schema for result events published to a message queue (notifications about submission evaluation).",
+  "x-channel": "judge.result.evaluation.completed",
   "type": "object",
   "additionalProperties": false,
   "properties": {

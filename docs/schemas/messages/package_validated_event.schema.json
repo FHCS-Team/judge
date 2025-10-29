@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/package_validated_event.schema.json",
+  "title": "Problem Package Validated Payload",
+  "description": "Payload schema for `dmoj.problem.package.validated` events (JUDGE → DMOJ).",
+  "x-channel": "judge.package.validated",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "package_id": { "type": "string" },
+    "problem_id": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["accepted", "rejected", "scheduled"], "description": "Validation outcome" },
+    "errors": { "type": "array", "items": { "type": "object", "additionalProperties": true }, "description": "Validation errors if any" },
+    "build_job_id": { "type": ["string", "null"], "description": "Optional build job identifier if image build scheduled" },
+    "details": { "type": "object", "additionalProperties": true }
+  },
+  "required": ["package_id", "status"]
+}

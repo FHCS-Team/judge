@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/evaluation_progress.schema.json",
+  "title": "Evaluation Progress Payload",
+  "description": "Optional incremental updates for long-running evaluations (`judge.evaluation.progress`).",
+  "x-channel": "judge.evaluation.progress",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "submission_id": { "type": "string" },
+    "progress_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+    "update": { "type": ["string", "object", "null"], "description": "Human-readable or structured progress update" },
+    "partial_rubrics": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  },
+  "required": ["submission_id", "progress_percent"]
+}

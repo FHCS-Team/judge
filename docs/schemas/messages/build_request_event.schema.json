@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/build_request_event.schema.json",
+  "title": "Problem Image Build Request Payload",
+  "description": "Payload for `dmoj.problem.image.build.request` events — request JUDGE to build images for a problem/package.",
+  "x-channel": "judge.build.request",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "problem_id": { "type": "string" },
+    "package_id": { "type": ["string", "null"] },
+    "target_stages": { "type": "array", "items": { "type": "string", "enum": ["build", "eval"] }, "minItems": 1 },
+    "build_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "force_rebuild": { "type": "boolean", "default": false },
+        "pull_base_images": { "type": "boolean", "default": true }
+      }
+    },
+    "resources": { "type": "object", "additionalProperties": true }
+  },
+  "required": ["problem_id", "target_stages"]
+}

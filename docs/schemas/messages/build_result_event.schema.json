@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/build_result_event.schema.json",
+  "title": "Problem Image Build Result Payload",
+  "description": "Payload for `dmoj.problem.image.build.completed` / `dmoj.problem.image.build.failed` events published by JUDGE.",
+  "x-channel": "judge.build.result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "problem_id": { "type": ["string", "null"] },
+    "build_job_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["completed", "failed"] },
+    "image_refs": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Map container_id -> image tag/ref" },
+    "logs_url": { "type": "string" },
+    "artifacts": { "type": "array", "items": { "type": "object", "properties": { "filename": { "type": "string" }, "url": { "type": "string" } }, "required": ["filename", "url"] } },
+    "errors": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+  },
+  "required": ["problem_id", "build_job_id", "status"]
+}

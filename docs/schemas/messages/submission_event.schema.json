@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/submission_event.schema.json",
+  "title": "Submission Submission Payload",
+  "description": "Payload for `dmoj.submission.submitted` events (DMOJ → JUDGE).",
+  "x-channel": "judge.submission",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "submission_id": { "type": "string" },
+    "problem_id": { "type": "string" },
+    "user_id": { "type": ["string", "null"] },
+    "team_id": { "type": ["string", "null"] },
+    "package_url": { "type": "string", "description": "URL or storage identifier where the submission package can be fetched" },
+    "submission_blob": { "type": ["object", "null"], "description": "Optional inline blob (avoid large payloads)" },
+    "timestamp_submitted": { "type": "string", "format": "date-time" },
+    "language": { "type": "string" },
+    "run_options": { "type": "object", "additionalProperties": true }
+  },
+  "oneOf": [{ "required": ["submission_id", "problem_id", "package_url"] }, { "required": ["submission_id", "problem_id", "submission_blob"] }]
+}

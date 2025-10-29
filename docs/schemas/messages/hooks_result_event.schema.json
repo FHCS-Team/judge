@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/FHCS-Team/judge/schemas/messages/hooks_result_event.schema.json",
+  "title": "Hook Execution Result Payload",
+  "description": "Payload for hook execution results (response to `dmoj.hooks.execute.request`).",
+  "x-channel": "judge.hooks.result",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "hook_id": { "type": "string" },
+    "submission_id": { "type": ["string", "null"] },
+    "problem_id": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["success", "failed"] },
+    "output": { "type": ["string", "object", "null"], "description": "Optional captured output or structured result" },
+    "errors": { "type": ["array", "null"], "items": { "type": "object", "additionalProperties": true } },
+    "return_code": { "type": ["integer", "null"] },
+    "duration_seconds": { "type": ["number", "null"] },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "required": ["hook_id", "status", "timestamp"]
+}
