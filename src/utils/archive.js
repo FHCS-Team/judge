@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const tar = require("tar");
-const { createGunzip } = require("zlib");
+const unzipper = require("unzipper");
 const logger = require("./logger");
 
 /**
@@ -19,12 +19,48 @@ class ArchiveManager {
     try {
       await fs.promises.mkdir(destDir, { recursive: true });
 
-      // Extract using tar library
-      await tar.extract({
-        file: archivePath,
-        cwd: destDir,
-        strip: 1, // Remove the top-level directory from archive
-      });
+      // Choose extractor based on extension or file signature
+      let ext = (path.extname(archivePath) || "").toLowerCase();
+
+      // If extension is missing, inspect magic bytes to detect format (zip vs tar/gzip)
+      if (!ext) {
+        try {
+          const fd = await fs.promises.open(archivePath, "r");
+          const header = Buffer.alloc(8);
+          await fd.read(header, 0, 8, 0);
+          await fd.close();
+          if (header[0] === 0x50 && header[1] === 0x4b) {
+            ext = ".zip";
+          } else {
+            ext = ".tar.gz";
+          }
+        } catch (e) {
+          // ignore detection failure and fall back to default
+          logger.debug(
+            { err: e && e.message ? e.message : e },
+            "Failed to detect archive type by header",
+          );
+        }
+      }
+
+      if (ext === ".zip") {
+        // Extract using the `unzipper` package
+        await new Promise((resolve, reject) => {
+          const read = fs.createReadStream(archivePath);
+          const extractor = unzipper.Extract({ path: destDir });
+          read.pipe(extractor);
+          extractor.on("close", resolve);
+          extractor.on("error", reject);
+          read.on("error", reject);
+        });
+      } else {
+        // Default: extract as tar (supports .tar.gz, .tgz and plain tar)
+        await tar.extract({
+          file: archivePath,
+          cwd: destDir,
+          strip: 1, // Remove the top-level directory from archive
+        });
+      }
 
       logger.info({ archivePath, destDir }, "Archive extracted successfully");
     } catch (error) {
@@ -50,10 +86,33 @@ class ArchiveManager {
     try {
       await fs.promises.mkdir(destDir, { recursive: true });
 
-      // Create a temporary file for extraction
+      // Detect format from magic bytes and pick an extension
+      const signature = archiveData.slice(0, 8);
+      let ext = ".tar.gz";
+      // gzip magic: 1F 8B
+      if (signature[0] === 0x1f && signature[1] === 0x8b) {
+        ext = ".tar.gz";
+      }
+      // zip magic: PK 0x03 0x04
+      else if (signature[0] === 0x50 && signature[1] === 0x4b) {
+        ext = ".zip";
+      }
+      // 7z magic: 37 7A BC AF 27 1C
+      else if (
+        signature[0] === 0x37 &&
+        signature[1] === 0x7a &&
+        signature[2] === 0xbc &&
+        signature[3] === 0xaf &&
+        signature[4] === 0x27 &&
+        signature[5] === 0x1c
+      ) {
+        ext = ".7z";
+      }
+
+      // Create a temporary file for extraction with detected extension
       const tempFile = path.join(
         require("os").tmpdir(),
-        `extract-${Date.now()}.tar.gz`,
+        `extract-${Date.now()}${ext}`,
       );
       await fs.promises.writeFile(tempFile, archiveData);
 

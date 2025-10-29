@@ -111,15 +111,35 @@ class JudgeProcessor {
       // Download or extract package
       if (archive_url) {
         const downloader = new Downloader();
+        // Preserve the original filename when possible instead of forcing .tar.gz
+        let basename;
+        try {
+          basename = path.basename(new URL(archive_url).pathname) || `${problem_id}`;
+        } catch (e) {
+          basename = `${problem_id}`;
+        }
         const archiveFile = path.resolve(
           this.tempDir,
-          `${problem_id}-${Date.now()}.tar.gz`,
+          `${problem_id}-${Date.now()}-${basename}`,
         );
         await downloader.downloadFile(archive_url, archiveFile);
 
         const archiver = new ArchiveManager();
-        await archiver.extractArchive(archiveFile, problemDir);
-        await fs.promises.unlink(archiveFile); // cleanup
+        try {
+          await archiver.extractArchive(archiveFile, problemDir);
+          // cleanup only when extraction succeeded
+          await fs.promises.unlink(archiveFile).catch(() => {});
+        } catch (e) {
+          // If extraction fails (not a tar archive), save the downloaded file as-is
+          logger.warn(
+            { archiveFile, problemDir, err: e.message },
+            'Archive extraction failed; saving archive file as-is in problem directory',
+          );
+          await fs.promises.mkdir(problemDir, { recursive: true });
+          const target = path.resolve(problemDir, path.basename(archiveFile));
+          await fs.promises.copyFile(archiveFile, target);
+          // keep the temp archive for debugging; do not unlink
+        }
       } else if (archive_data) {
         const archiver = new ArchiveManager();
         await archiver.extractBuffer(archive_data, problemDir);
@@ -411,9 +431,15 @@ class JudgeProcessor {
       // Download or extract submission
       if (archive_url) {
         const downloader = new Downloader();
+        let basename;
+        try {
+          basename = path.basename(new URL(archive_url).pathname) || `${submission_id}`;
+        } catch (e) {
+          basename = `${submission_id}`;
+        }
         const archiveFile = path.resolve(
           this.tempDir,
-          `${submission_id}-${Date.now()}.tar.gz`,
+          `${submission_id}-${Date.now()}-${basename}`,
         );
         await downloader.downloadFile(archive_url, archiveFile);
 
@@ -425,8 +451,17 @@ class JudgeProcessor {
           .digest("hex");
 
         const archiver = new ArchiveManager();
-        await archiver.extractArchive(archiveFile, submissionDir);
-        await fs.promises.unlink(archiveFile);
+        try {
+          await archiver.extractArchive(archiveFile, submissionDir);
+          await fs.promises.unlink(archiveFile);
+        } catch (e) {
+          logger.warn(
+            { archiveFile, submissionDir, err: e.message },
+            'Submission archive extraction failed; saving archive file as-is in submission directory',
+          );
+          await fs.promises.copyFile(archiveFile, path.resolve(submissionDir, path.basename(archiveFile)));
+          // leave temp file for debugging
+        }
       } else if (archive_data) {
         // If archive_data is provided, compute hash from it
         archiveBuffer = Buffer.isBuffer(archive_data)
