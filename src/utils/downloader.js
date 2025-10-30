@@ -24,21 +24,25 @@ class Downloader {
       });
 
       const writer = fs.createWriteStream(outputPath);
-      response.data.pipe(writer);
 
-      return new Promise((resolve, reject) => {
-        writer.on("finish", () => {
-          logger.info({ url, outputPath }, "File downloaded successfully");
-          resolve(outputPath);
-        });
-        writer.on("error", (error) => {
-          logger.error(
-            { url, outputPath, error: error.message },
-            "Failed to download file",
-          );
-          reject(error);
-        });
-      });
+      // Use pipeline to ensure the stream is fully finished and the file descriptor
+      // is closed before resolving. This prevents unzip/extract attempts from
+      // starting while the file is still being written.
+      const { pipeline } = require("stream");
+      const { promisify } = require("util");
+      const pipelineAsync = promisify(pipeline);
+
+      try {
+        await pipelineAsync(response.data, writer);
+        logger.info({ url, outputPath }, "File downloaded successfully");
+        return outputPath;
+      } catch (error) {
+        logger.error(
+          { url, outputPath, error: error.message },
+          "Failed to download file",
+        );
+        throw error;
+      }
     } catch (error) {
       logger.error(
         { url, outputPath, error: error.message },

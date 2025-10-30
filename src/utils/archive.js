@@ -44,21 +44,89 @@ class ArchiveManager {
       }
 
       if (ext === ".zip") {
-        // Extract using the `unzipper` package
-        await new Promise((resolve, reject) => {
-          const read = fs.createReadStream(archivePath);
-          const extractor = unzipper.Extract({ path: destDir });
-          read.pipe(extractor);
-          extractor.on("close", resolve);
-          extractor.on("error", reject);
-          read.on("error", reject);
-        });
+        // ZIP: use unzipper to inspect entries so we can decide whether to strip
+        const directory = await unzipper.Open.file(archivePath);
+        const entries = directory.files || [];
+
+        // Determine whether all entries share the same first path component
+        // and none are top-level files (no '/'). Only then we can safely strip 1.
+        let strip = false;
+        if (entries.length > 0) {
+          const firstParts = entries.map((e) => (e.path || "").split("/")[0]);
+          const uniqueFirsts = new Set(firstParts.filter(Boolean));
+          const allHaveSlash = entries.every((e) =>
+            (e.path || "").includes("/"),
+          );
+          strip = uniqueFirsts.size === 1 && allHaveSlash;
+        }
+
+        // Extract entries manually so we can optionally strip the leading component
+        for (const entry of entries) {
+          const entryPath = entry.path || "";
+          const parts = entryPath.split("/");
+          const rel = (strip ? parts.slice(1) : parts)
+            .filter(Boolean)
+            .join("/");
+          if (!rel) {
+            // nothing to write (this happens if a top-level file would be stripped)
+            continue;
+          }
+          const target = path.join(destDir, rel);
+
+          if (entry.type === "Directory") {
+            await fs.promises.mkdir(target, { recursive: true });
+            continue;
+          }
+
+          // ensure parent directory exists
+          await fs.promises.mkdir(path.dirname(target), { recursive: true });
+
+          await new Promise((resolve, reject) => {
+            entry
+              .stream()
+              .pipe(fs.createWriteStream(target))
+              .on("finish", resolve)
+              .on("error", reject);
+          });
+        }
       } else {
         // Default: extract as tar (supports .tar.gz, .tgz and plain tar)
+
+        // Inspect tar entries first to decide whether we should strip the
+        // leading top-level directory. If all entries share the same first
+        // path component and no entry is a top-level file, we can safely
+        // strip 1. Otherwise we extract without stripping to avoid dropping
+        // root-level files like `config.json`.
+        const paths = [];
+        try {
+          await tar.list({
+            file: archivePath,
+            onentry: (entry) => {
+              if (entry && entry.path) paths.push(entry.path);
+            },
+          });
+        } catch (e) {
+          // If listing fails, fall back to extracting without stripping
+          logger.debug(
+            { err: e && e.message ? e.message : e },
+            "Failed to list tar entries, will extract without strip",
+          );
+        }
+
+        let strip = 0;
+        if (paths.length > 0) {
+          const firstParts = paths.map((p) => p.split("/")[0]);
+          const uniqueFirsts = new Set(firstParts.filter(Boolean));
+          const allHaveSlash = paths.every((p) => p.includes("/"));
+          if (uniqueFirsts.size === 1 && allHaveSlash) {
+            strip = 1;
+          }
+        }
+
         await tar.extract({
           file: archivePath,
           cwd: destDir,
-          strip: 1, // Remove the top-level directory from archive
+          strip: strip,
         });
       }
 
