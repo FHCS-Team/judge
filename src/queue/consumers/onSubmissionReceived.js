@@ -120,11 +120,32 @@ module.exports = async function onSubmissionReceived(msg) {
       await processor.submitSubmission(mapped);
 
       // Kick off evaluation. Pass team_id if present (may be undefined/null).
-      await processor.runEvaluation({
+      const result = await processor.runEvaluation({
         submission_id,
         problem_id,
         team_id: payload.team_id || null,
       });
+
+      // Publish result event to the message queue so other services can consume it
+      try {
+        const publishResult = require("../publishers/result");
+        // publisher is async but we don't need to await it for AMQP ack; log failures
+        publishResult(result).catch((err) => {
+          logger.warn(
+            {
+              submission_id,
+              problem_id,
+              err: err && err.message ? err.message : err,
+            },
+            "Failed to publish result event",
+          );
+        });
+      } catch (e) {
+        logger.warn(
+          { submission_id, problem_id, err: e && e.message ? e.message : e },
+          "Failed to require result publisher",
+        );
+      }
 
       logger.info(
         `Processing complete for submission=${submission_id} problem=${problem_id}`,
