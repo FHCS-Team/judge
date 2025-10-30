@@ -80,6 +80,7 @@ async function connect() {
 /**
  * Create and return a channel (confirm channel optionally).
  * If `confirm` is true, returns a ConfirmChannel.
+ * @returns {Promise<amqp.Channel|amqp.ConfirmChannel>}
  */
 async function createChannel({ confirm = false } = {}) {
   const conn = await connect();

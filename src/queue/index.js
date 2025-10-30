@@ -1,8 +1,15 @@
+const logger = require("#utils/logger.js");
+const os = require("os");
 const { createChannel, connect, close } = require("./amqpConnection");
 
 const JUDGE_EXCHANGE = process.env.JUDGE_EXCHANGE || "dmoj-events";
 const JUDGE_QUEUE_NAME = process.env.JUDGE_QUEUE_NAME || "judge-queue";
 const JUDGE_EXCHANGE_TYPE = process.env.JUDGE_EXCHANGE_TYPE || "topic";
+
+// Unique identifier for this process/instance so we can avoid processing our
+// own published messages. Can be overridden with JUDGE_INSTANCE_ID env var.
+const INSTANCE_ID =
+  process.env.JUDGE_INSTANCE_ID || `${os.hostname()}:${process.pid}`;
 
 async function assertExchange(
   channel,
@@ -26,22 +33,32 @@ async function bindQueue(channel, queueName, exchangeName, pattern = "") {
 }
 
 async function publish(routingKey, content, options = {}) {
+  // Publish the provided `content` as the top-level message body to the
+  // configured exchange. This matches the expected envelope shape used by
+  // external consumers (judge-site).
   const ch = await createChannel({ confirm: false });
   try {
     await ch.assertExchange(JUDGE_EXCHANGE, JUDGE_EXCHANGE_TYPE, {
       durable: true,
     });
-    // Wrap content with a fields.routingKey property instead of using header-based routing
-    const message = {
-      fields: { routingKey },
-      content,
-    };
-    const ok = ch.publish(
-      JUDGE_EXCHANGE,
-      routingKey,
-      Buffer.from(JSON.stringify(message)),
-      options,
+
+    const props = Object.assign({}, options);
+    // Ensure JSON content-type when not provided
+    if (!props.contentType) props.contentType = "application/json";
+    // Attach origin header so local consumers can ignore self-published messages
+    props.headers = Object.assign({}, props.headers || {}, {
+      "x-origin": INSTANCE_ID,
+      ...(props.headers || {}),
+    });
+
+    const body = Buffer.from(JSON.stringify(content));
+    const ok = ch.publish(JUDGE_EXCHANGE, routingKey, body, props);
+
+    logger.debug(
+      `Published message to ${JUDGE_EXCHANGE} with key ${routingKey}`,
     );
+    logger.debug(content);
+
     return ok;
   } finally {
     try {
@@ -78,4 +95,5 @@ module.exports = {
   bindQueue,
   publish,
   consume,
+  INSTANCE_ID,
 };

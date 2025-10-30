@@ -16,9 +16,10 @@ async function publishStatus(when = new Date()) {
   };
 
   try {
-    await queue.publish("status", payload);
-    logger.debug("Published status event");
-    logger.debug(payload);
+    // await queue.publish("status", payload);
+    // logger.debug("Published status event");
+    // logger.debug(payload);
+    // do nothing for now
   } catch (err) {
     logger.warn(
       "Failed to publish status event",

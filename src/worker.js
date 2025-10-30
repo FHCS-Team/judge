@@ -35,6 +35,26 @@ async function handleMessage(msg) {
   if (!msg) return;
   const identifier = msg.properties.messageId;
   try {
+    // Ignore messages published by this same instance (x-origin header)
+    try {
+      const origin =
+        msg.properties &&
+        msg.properties.headers &&
+        msg.properties.headers["x-origin"];
+      if (origin && origin === queue.INSTANCE_ID) {
+        logger.debug(
+          `Skipping self-originated message ${identifier} (x-origin=${origin})`,
+        );
+        // Indicate to the consumer wrapper that this message should NOT be
+        // acknowledged by this consumer but should be requeued so other
+        // consumers (possibly sharing the same queue) can process it.
+        // The consume wrapper understands a return value of { requeue: true }.
+        return { requeue: true };
+      }
+    } catch (e) {
+      // ignore header errors and continue
+    }
+
     let handled = false;
     for (const consumer of consumers) {
       // try calling consumer(msg), if false or undefined, skip to next
