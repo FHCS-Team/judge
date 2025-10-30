@@ -148,23 +148,69 @@ module.exports = async function onProblemReceived(msg) {
 
   // Process asynchronously so the consumer can ack quickly
   (async () => {
-    try {
-      await processor.submitProblemPackage(packageData);
-      logger.info(
-        `Problem package processed: package=${package_id} problem=${problem_id}`,
-      );
-    } catch (err) {
+    const MAX_ATTEMPTS = parseInt(process.env.PACKAGE_FETCH_RETRIES || "5", 10);
+    const INITIAL_DELAY_MS = parseInt(
+      process.env.PACKAGE_FETCH_RETRY_DELAY_MS || "1000",
+      10,
+    );
+
+    function sleep(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
+
+    let attempt = 0;
+    while (true) {
+      attempt += 1;
       try {
-        logger.error(
-          {
-            err: err && err.message ? err.message : err,
-            package_id,
-            problem_id,
-          },
-          "Error processing problem package",
+        await processor.submitProblemPackage(packageData);
+        logger.info(
+          `Problem package processed: package=${package_id} problem=${problem_id}`,
         );
-      } catch (e) {
-        // swallow logging errors
+        break;
+      } catch (err) {
+        const message = err && err.message ? err.message : String(err);
+        // If we've exhausted attempts, log and exit
+        if (attempt >= MAX_ATTEMPTS) {
+          try {
+            logger.error(
+              {
+                err: message,
+                package_id,
+                problem_id,
+                attempt,
+              },
+              "Error processing problem package (final attempt)",
+            );
+          } catch (e) {
+            // swallow
+          }
+          break;
+        }
+
+        // Retryable errors: missing file (404) or network errors. Use a simple heuristic.
+        if (/status code 404|ECONNREFUSED|ENOTFOUND|timeout/i.test(message)) {
+          const delay = Math.min(INITIAL_DELAY_MS * 2 ** (attempt - 1), 30000);
+          logger.warn(
+            { package_id, problem_id, attempt, delay, err: message },
+            `Package not yet available, will retry in ${delay}ms (attempt ${attempt}/${MAX_ATTEMPTS})`,
+          );
+          await sleep(delay);
+          continue;
+        }
+
+        // Non-retryable error: log and stop retrying
+        try {
+          logger.error(
+            {
+              err: message,
+              package_id,
+              problem_id,
+              attempt,
+            },
+            "Error processing problem package (non-retryable)",
+          );
+        } catch (e) {}
+        break;
       }
     }
   })();
