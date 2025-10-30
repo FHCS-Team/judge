@@ -114,7 +114,8 @@ class JudgeProcessor {
         // Preserve the original filename when possible instead of forcing .tar.gz
         let basename;
         try {
-          basename = path.basename(new URL(archive_url).pathname) || `${problem_id}`;
+          basename =
+            path.basename(new URL(archive_url).pathname) || `${problem_id}`;
         } catch (e) {
           basename = `${problem_id}`;
         }
@@ -122,7 +123,61 @@ class JudgeProcessor {
           this.tempDir,
           `${problem_id}-${Date.now()}-${basename}`,
         );
-        await downloader.downloadFile(archive_url, archiveFile);
+
+        // Use PACKAGE_FETCH_RETRIES from env (default from .env.example is 5)
+        const maxAttempts = parseInt(
+          process.env.PACKAGE_FETCH_RETRIES || "5",
+          10,
+        );
+        const baseDelayMs = parseInt(
+          process.env.PACKAGE_FETCH_BACKOFF_MS ||
+            process.env.SUBMISSION_DOWNLOAD_BACKOFF_MS ||
+            "500",
+          10,
+        );
+
+        let attempt = 0;
+        let lastErr = null;
+        while (attempt < maxAttempts) {
+          attempt += 1;
+          try {
+            // remove any partial file before attempting
+            try {
+              if (await this.fileExists(archiveFile)) {
+                await fs.promises.unlink(archiveFile).catch(() => {});
+              }
+            } catch (e) {
+              // non-fatal
+            }
+
+            await downloader.downloadFile(archive_url, archiveFile);
+            lastErr = null;
+            break;
+          } catch (err) {
+            lastErr = err;
+            logger.warn(
+              { problem_id, attempt, maxAttempts, err: err.message },
+              "Problem package download attempt failed",
+            );
+
+            if (attempt >= maxAttempts) break;
+
+            const delay = Math.round(
+              baseDelayMs *
+                Math.pow(2, attempt - 1) *
+                (0.8 + Math.random() * 0.4),
+            );
+            await new Promise((r) => setTimeout(r, delay));
+          }
+        }
+
+        if (lastErr) {
+          const e = new Error(
+            `Failed to download problem package after ${maxAttempts} attempts: ${lastErr.message}`,
+          );
+          e.cause = lastErr;
+          throw e;
+        }
 
         const archiver = new ArchiveManager();
         try {
@@ -133,7 +188,7 @@ class JudgeProcessor {
           // If extraction fails (not a tar archive), save the downloaded file as-is
           logger.warn(
             { archiveFile, problemDir, err: e.message },
-            'Archive extraction failed; saving archive file as-is in problem directory',
+            "Archive extraction failed; saving archive file as-is in problem directory",
           );
           await fs.promises.mkdir(problemDir, { recursive: true });
           const target = path.resolve(problemDir, path.basename(archiveFile));
@@ -433,7 +488,8 @@ class JudgeProcessor {
         const downloader = new Downloader();
         let basename;
         try {
-          basename = path.basename(new URL(archive_url).pathname) || `${submission_id}`;
+          basename =
+            path.basename(new URL(archive_url).pathname) || `${submission_id}`;
         } catch (e) {
           basename = `${submission_id}`;
         }
@@ -441,7 +497,62 @@ class JudgeProcessor {
           this.tempDir,
           `${submission_id}-${Date.now()}-${basename}`,
         );
-        await downloader.downloadFile(archive_url, archiveFile);
+
+        // Retry logic for submission downloads: transient network errors should be retryable
+        const maxAttempts = parseInt(
+          process.env.SUBMISSION_DOWNLOAD_RETRIES || "3",
+          10,
+        );
+        const baseDelayMs = parseInt(
+          process.env.SUBMISSION_DOWNLOAD_BACKOFF_MS || "500",
+          10,
+        );
+        let attempt = 0;
+        let lastErr = null;
+
+        while (attempt < maxAttempts) {
+          attempt += 1;
+          try {
+            // Ensure any partially written file is removed before starting
+            try {
+              if (await this.fileExists(archiveFile)) {
+                await fs.promises.unlink(archiveFile).catch(() => {});
+              }
+            } catch (e) {
+              // non-fatal
+            }
+
+            await downloader.downloadFile(archive_url, archiveFile);
+            lastErr = null;
+            break; // success
+          } catch (err) {
+            lastErr = err;
+            logger.warn(
+              { submission_id, attempt, maxAttempts, err: err.message },
+              "Submission download attempt failed",
+            );
+
+            // If we've exhausted attempts, rethrow after loop
+            if (attempt >= maxAttempts) break;
+
+            // Exponential backoff with jitter
+            const delay = Math.round(
+              baseDelayMs *
+                Math.pow(2, attempt - 1) *
+                (0.8 + Math.random() * 0.4),
+            );
+            await new Promise((r) => setTimeout(r, delay));
+          }
+        }
+
+        if (lastErr) {
+          // Attach context and throw
+          const e = new Error(
+            `Failed to download submission archive after ${maxAttempts} attempts: ${lastErr.message}`,
+          );
+          e.cause = lastErr;
+          throw e;
+        }
 
         // Compute SHA-256 hash of the archive
         archiveBuffer = await fs.promises.readFile(archiveFile);
@@ -457,9 +568,12 @@ class JudgeProcessor {
         } catch (e) {
           logger.warn(
             { archiveFile, submissionDir, err: e.message },
-            'Submission archive extraction failed; saving archive file as-is in submission directory',
+            "Submission archive extraction failed; saving archive file as-is in submission directory",
           );
-          await fs.promises.copyFile(archiveFile, path.resolve(submissionDir, path.basename(archiveFile)));
+          await fs.promises.copyFile(
+            archiveFile,
+            path.resolve(submissionDir, path.basename(archiveFile)),
+          );
           // leave temp file for debugging
         }
       } else if (archive_data) {
